@@ -1,0 +1,33 @@
+NOTES on 8080 ASSEMBLY:
+
+4/15/2017:
+Carry Bit: 
+		0011x111
+Single R(Register): 
+		00xxx100
+		00xxx101
+		00101111
+		00100111
+		00000000
+Data Transfer:
+		01xxxxxx
+		000xx010
+R or M(Memory) to
+A(Accumulator):
+		10xxxxxx
+Rotate A:
+		000xx111
+R Pair:
+		11xx0101
+		11xx0001
+		00xx1001
+		00xx0011
+		00xx1011
+		11101011
+		11100011
+		11111001
+Immediate:
+		00xx0001
+		00xxx110
+		
+		
