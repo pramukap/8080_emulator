@@ -42,8 +42,8 @@ uint16_t* Hp = (uint16_t*)(gpr+4);
 //A+status
 uint16_t* PSW = (uint16_t*)(gpr+6);
 
-uint16_t pc;
-uint16_t sp;
+uint8_t* pc;
+uint8_t* sp;
 
 //Control I/O Signals of 8080
 //SIGNALS - WR'(0) | DBIN(O) | INTE(O) | INT(I) | HOLD ACK(O) | HOLD(I) | WAIT (0) | READY(I) | SYNC(O) | RESET(I) 
@@ -58,8 +58,66 @@ uint16_t indicator;
 uint8_t inst_reg;
 uint32_t time = 0;
 
+//machine cycle operations
+//FETCH - reads next program instruction, and stores it in the instruction register; then increments the pc
+void fetch(uint8_t* pc){
+	inst_reg = *pc;
+	pc = pc+1;
+}
+
+//MEMORY READ - reads data/address at adr to the register or register pair indicated by the select (0 = r, 1 = rp)   
+void memR(uint8_t* adr, uint8_t* dr, uint8_t select){
+	if(select == 1)
+	{
+		dr[1] = adr[1];
+		return;
+	}
+
+	dr[0] = *adr;
+}
+
+//MEMORY WRITE - writes data in source register or source register pair (sr) as indicated by the select (0 = r, 1 = rp) to address (adr)  
+void memW(uint8_t* adr, uint8_t* sr, uint8_t select){
+	if(select == 1)
+	{
+		adr[1] = sr[1];
+		return;
+	}
+
+	adr[0] = sr[0];
+}
+
+//STACK READ - reads data/address stored on stack to the register or register pair indicated by the select (0 = r, 1 = rp)
+void stackR(uint8_t* sp, uint8_t* dr, uint8_t select){
+	if(select == 1)
+	{
+		dr[1] = sp[1];
+		dr[0] = sp[0];
+		sp += 2;
+		return;
+	}
+
+	dr[0] = sp[0];
+	sp += 1;
+}
+
+//STACK WRITE - writes data stored in source register or register pair (sr) as indiacted by select (0 = r, 1 = rp) to stack
+void stackW(uint8_t* sp, uint8_t* sr, uint8_t select){
+	if(select == 1)
+	{
+		sp -= 2;
+		sp[1] = sr[1];
+		sp[0] = sr[0];
+		return;
+	}
+
+	sp[0] = sr[0];
+}	
+
+//INPUT READ:w
+
 //8080 Instruction Set
-inst inst_set[255] = {		//	mnemonic      	SIZE,DURATION,FLAGS (EP, Z, S, AC, C)
+inst inst_set[246] = {		//	mnemonic      	SIZE,DURATION,FLAGS (EP, Z, S, AC, C)
 {0x0080,,"NOP"} 		//0	NOP 		S0,D4,F00000	0000 0000 1000 0000
 {0x0940,,"LXI B, D16"}		//1	LXI B		S2,D10,F00000   0000 1001 0100 0000
 {0x00E0,,"STAX B"}		//2	STAX B		S0,D7,F00000    0000 0000 1110 0000
@@ -72,7 +130,7 @@ inst inst_set[255] = {		//	mnemonic      	SIZE,DURATION,FLAGS (EP, Z, S, AC, C)
 {0x0141,,"DAD B"}		//9	DAD B		S0,D10,F00001	0000 0001 0100 0001
 {0x00E0,,"LDAX B"}		//10	LDAX B		S0,D7,F00000	0000 0000 1110 0000
 {0x00A0,,"DCX B"}		//11	DCX B		S0,D5,F00000	0000 0000 1010 0000
-
+{0x00DE,,"INR C"}		//12	INR C		S0,D5,F11110	0000 0000 1011 1110
 };
 
 			
