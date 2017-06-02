@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 
-static typedef struct instruction 
+typedef struct i_data 
 {
 	//Bits			[15:12] [11:10]			  [9:5]         [4:0]
 	//Data			        |SIZE(BYTES EXCL. OPCODE) |DURATION(CC) |FLAGS(Even Parity, Zero, Sign, Aux Carry, Carry)
@@ -12,36 +12,38 @@ static typedef struct instruction
 	uint8_t duration;
 	uint32_t (*instFunc)(void); //Function that emulates instruction; returns duration of instruction
 	char *name;		//Instruction mnemonic		
-} inst;
+} data;
 
-static uint8_t const *mem = (uint8_t)malloc(4000*sizeof(uint8_t));
+typedef void (*inst)(data);
+
+uint8_t *mem;
 
 static uint8_t gpr[10];
 
-static uint8_t const *B = gpr+0;
-static uint8_t const *C = gpr+1;
-static uint8_t const *D = gpr+2;
-static uint8_t const *E = gpr+3;
-static uint8_t const *H = gpr+4;
-static uint8_t const *L = gpr+5;
+static uint8_t *B = gpr+0;
+static uint8_t *C = gpr+1;
+static uint8_t *D = gpr+2;
+static uint8_t *E = gpr+3;
+static uint8_t *H = gpr+4;
+static uint8_t *L = gpr+5;
 //Accumulator
-static uint8_t const *A = gpr+6;
+static uint8_t *A = gpr+6;
 //FLAGS - Carry | Aux Carry | Sign | Zero | Even Parity
 //BIT   - 0     | 1         | 2    | 3    | 4 
-static uint8_t const *status = gpr+7;
+static uint8_t *status = gpr+7;
 //Registers Z and W can only be used for instruction execution
 //These registers are not directly accessible to the programmer
-static uint8_t const *Z = gpr+8;
-static uint8_t const *W = gpr+9;
+static uint8_t *Z = gpr+8;
+static uint8_t *W = gpr+9;
 
 //B+C
-static uint16_t const *Bp = (uint16_t*)(gpr+0);
+static uint16_t *Bp = (uint16_t*)(gpr+0);
 //D+E
-static uint16_t const *Dp = (uint16_t*)(gpr+2);
+static uint16_t *Dp = (uint16_t*)(gpr+2);
 //H+L
-static uint16_t const *Hp = (uint16_t*)(gpr+4);
+static uint16_t *Hp = (uint16_t*)(gpr+4);
 //A+status
-static uint16_t const *PSW = (uint16_t*)(gpr+6);
+static uint16_t *PSW = (uint16_t*)(gpr+6);
 
 //use offset method so that if I read the value of the pc or sp, I get the emulated address and not the actual address of the host computer
 static uint8_t pc;
@@ -60,67 +62,9 @@ static uint16_t indicator;
 static uint8_t inst_reg;
 static uint32_t time = 0;
 
-/*machine cycle operations
-//FETCH - reads next program instruction, and stores it in the instruction register; then increments the pc
-void fetch(uint8_t* pc){
-	inst_reg = *pc;
-	pc = pc+1;
-}
-
-//MEMORY READ - reads data/address at adr to the register or register pair indicated by the select (0 = r, 1 = rp)   
-void memR(uint8_t* adr, uint8_t* dr, uint8_t select){
-	if(select == 1)
-	{
-		dr[1] = adr[1];
-		return;
-	}
-
-	dr[0] = *adr;
-}
-
-//MEMORY WRITE - writes data in source register or source register pair (sr) as indicated by the select (0 = r, 1 = rp) to address (adr)  
-void memW(uint8_t* adr, uint8_t* sr, uint8_t select){
-	if(select == 1)
-	{
-		adr[1] = sr[1];
-		return;
-	}
-
-	adr[0] = sr[0];
-}
-
-//STACK READ - reads data/address stored on stack to the register or register pair indicated by the select (0 = r, 1 = rp)
-void stackR(uint8_t* sp, uint8_t* dr, uint8_t select){
-	if(select == 1)
-	{
-		dr[1] = sp[1];
-		dr[0] = sp[0];
-		sp += 2;
-		return;
-	}
-
-	dr[0] = sp[0];
-	sp += 1;
-}
-
-//STACK WRITE - writes data stored in source register or register pair (sr) as indiacted by select (0 = r, 1 = rp) to stack
-void stackW(uint8_t* sp, uint8_t* sr, uint8_t select){
-	if(select == 1)
-	{
-		sp -= 2;
-		sp[1] = sr[1];
-		sp[0] = sr[0];
-		return;
-	}
-
-	sp[0] = sr[0];
-}	
-
-//INPUT READ:w
-*/
 
 //8080 Instruction Set -> size, flags, duration, function, name
-static inst inst_set[246] = {		//	mnemonic      	SIZE,DURATION,FLAGS (EP, Z, S, AC, C)
+//static data inst_data[246] = {		//	mnemonic      	SIZE,DURATION,FLAGS (EP, Z, S, AC, C)
 /*
 {0x0080,,"NOP"} 		//0	NOP 		S0,D4,F00000	0000 0000 1000 0000
 {0x0940,,"LXI B, D16"}		//1	LXI B		S2,D10,F00000   0000 1001 0100 0000
@@ -136,13 +80,21 @@ static inst inst_set[246] = {		//	mnemonic      	SIZE,DURATION,FLAGS (EP, Z, S, 
 {0x00A0,,"DCX B"}		//11	DCX B		S0,D5,F00000	0000 0000 1010 0000
 {0x00DE,,"INR C"}		//12	INR C		S0,D5,F11110	0000 0000 1011 1110
 */
+/*
 {0x00000, }
 };
 
+static inst inst_set[246] = {
+
+}
+*/
+
 void main(){
+	mem = (uint8_t*)malloc(4000*sizeof(uint8_t));
+
 	while(1)
 	{
-		inst_reg = mem[pc]	
+		inst_reg = mem[pc];	
 	}
 	free(mem);			
 }
