@@ -2,6 +2,70 @@
 #include <stdlib.h>
 #include <stdint.h>
 
+//HARDWARE---
+//Memory
+static uint8_t *mem;
+
+//Registers 
+static uint8_t reg_file[10];
+
+//General Purpose Registers
+static uint8_t *const B = reg_file + 0;
+static uint8_t *const C = reg_file + 1;
+static uint8_t *const D = reg_file + 2;
+static uint8_t *const E = reg_file + 3;
+static uint8_t *const H = reg_file + 4;
+static uint8_t *const L = reg_file + 5;
+
+//Accumulator
+static uint8_t *const A = reg_file + 7;
+
+//Status Byte
+//FLAGS - Carry | Aux Carry | Sign | Zero | Even Parity
+//BIT   - 0     | 1         | 2    | 3    | 4 
+static uint8_t *const status = reg_file + 6;
+//Registers Z and W can only be used for instruction execution
+//These registers are not directly accessible to the programmer
+static uint8_t *const Z = reg_file + 8;
+static uint8_t *const W = reg_file + 9;
+
+//Register Pairs
+//B+C
+static uint16_t *const Bp = (uint16_t*)(reg_file + 0);
+//D+E
+static uint16_t *const Dp = (uint16_t*)(reg_file + 2);
+//H+L
+static uint16_t *const Hp = (uint16_t*)(reg_file + 4);
+//A+status
+static uint16_t *const PSW = (uint16_t*)(reg_file + 6);
+
+//use offset method (pc and sp contain emulated addresses, not addresses from host memory) so that if I read the value of the pc or sp, I get the emulated address and not the actual address of the host computer
+static uint8_t pc;
+static uint8_t sp;
+
+//Instruction Register
+static uint8_t inst_reg;
+
+//Processor Time
+static uint32_t time = 0;
+//---
+
+//I/O---
+//Control I/O Signals of 8080
+//SIGNALS - WR'(0) | DBIN(O) | INTE(O) | INT(I) | HOLD ACK(O) | HOLD(I) | WAIT (0) | READY(I) | SYNC(O) | RESET(I) 
+//BIT     - 0      | 1       | 2       | 3      | 4           | 5       | 6        | 7        | 8       | 9
+static uint16_t control;
+//---
+
+//USER INTERFACE---
+//Signals presented on the 8800 front panel
+//SIGNALS - INTE | PROT | MEMR | INP | M1 | OUT | HLTA | STACK | WO'  | INT(A) | WAIT | HLDA | RESET
+//BIT     - 0    | 1    | 2    | 3   | 4  | 5   | 6    | 7     | 8    | 9      | 10   | 11   | 12
+static uint16_t indicator;
+//---
+
+//8080 INSTRUCTION SET---
+//Stores data relevant to instruction; accessed by instruction-emulating function
 typedef struct i_data 
 {
 	//Bits			[15:12] [11:10]			  [9:5]         [4:0]
@@ -10,60 +74,14 @@ typedef struct i_data
 	uint8_t size;
 	uint8_t flags;
 	uint8_t duration;
-	uint32_t (*instFunc)(void); //Function that emulates instruction; returns duration of instruction
+	//uint32_t (*instFunc)(void); //Function that emulates instruction; returns duration of instruction
 	char *name;		//Instruction mnemonic		
 } data;
 
-typedef void (*inst)(data);
+//Function that emulates instruction
+typedef void (*inst)(data); 
 
-uint8_t *mem;
-
-static uint8_t gpr[10];
-
-static uint8_t *B = gpr+0;
-static uint8_t *C = gpr+1;
-static uint8_t *D = gpr+2;
-static uint8_t *E = gpr+3;
-static uint8_t *H = gpr+4;
-static uint8_t *L = gpr+5;
-//Accumulator
-static uint8_t *A = gpr+6;
-//FLAGS - Carry | Aux Carry | Sign | Zero | Even Parity
-//BIT   - 0     | 1         | 2    | 3    | 4 
-static uint8_t *status = gpr+7;
-//Registers Z and W can only be used for instruction execution
-//These registers are not directly accessible to the programmer
-static uint8_t *Z = gpr+8;
-static uint8_t *W = gpr+9;
-
-//B+C
-static uint16_t *Bp = (uint16_t*)(gpr+0);
-//D+E
-static uint16_t *Dp = (uint16_t*)(gpr+2);
-//H+L
-static uint16_t *Hp = (uint16_t*)(gpr+4);
-//A+status
-static uint16_t *PSW = (uint16_t*)(gpr+6);
-
-//use offset method so that if I read the value of the pc or sp, I get the emulated address and not the actual address of the host computer
-static uint8_t pc;
-static uint8_t sp;
-
-//Control I/O Signals of 8080
-//SIGNALS - WR'(0) | DBIN(O) | INTE(O) | INT(I) | HOLD ACK(O) | HOLD(I) | WAIT (0) | READY(I) | SYNC(O) | RESET(I) 
-//BIT     - 0      | 1       | 2       | 3      | 4           | 5       | 6        | 7        | 8       | 9
-static uint16_t control;
-
-//Signals presented on the 8800 front panel
-//SIGNALS - INTE | PROT | MEMR | INP | M1 | OUT | HLTA | STACK | WO'  | INT(A) | WAIT | HLDA | RESET
-//BIT     - 0    | 1    | 2    | 3   | 4  | 5   | 6    | 7     | 8    | 9      | 10   | 11   | 12
-static uint16_t indicator;
-
-static uint8_t inst_reg;
-static uint32_t time = 0;
-
-
-//8080 Instruction Set -> size, flags, duration, function, name
+//-> size, flags, duration, function, name
 //static data inst_data[246] = {		//	mnemonic      	SIZE,DURATION,FLAGS (EP, Z, S, AC, C)
 /*
 {0x0080,,"NOP"} 		//0	NOP 		S0,D4,F00000	0000 0000 1000 0000
@@ -89,28 +107,23 @@ static inst inst_set[246] = {
 }
 */
 
-void main(){
-	mem = (uint8_t*)malloc(4000*sizeof(uint8_t));
+static data inst_data[246];
 
-	while(1)
-	{
-		inst_reg = mem[pc];	
-	}
-	free(mem);			
-}
+static inst inst_set[246];
 
 //Instruction-Emulating Functions
 //Data Transfer
-
 //MOV REG -> Move data8 from source register to destination register
-void movR(uint8_t *dr, uint8_t *sr){
+void movR(uint8_t *dr, uint8_t *sr)
+{
 	*dr = *sr;	
 }
 
 //MOV MEM -> Move data8 from source register to destination memory (addr stored in register pair H) 
 //	  OR Move data8 from source memory (addr stored in rp H) to destination register
 //	  -> src_mem = 0 -> src = register, src_mem = 1 -> src = (H,L)
-void movM(uint8_t *dest, uint8_t *src, uint8_t src_mem){
+void movM(uint8_t *dest, uint8_t *src, uint8_t src_mem)
+{
 	uint16_t addr;		
 
 	if(src_mem)
@@ -226,4 +239,16 @@ void xchg(){
 
 //Branch
 
-//Stack, IO, Machine Control	
+//Stack, IO, Machine Control
+
+//---
+
+void main(){
+	mem = (uint8_t*)malloc(4000*sizeof(uint8_t));
+
+	while(1)
+	{
+		inst_reg = mem[pc];	
+	}
+	free(mem);			
+}
