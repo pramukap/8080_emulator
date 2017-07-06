@@ -6,13 +6,13 @@ CC = gcc
 #Compiler Flags
 #-g - generate debuggable executable code
 #-Wall - generate most compiler warnings
-FLAGS = -g -Wall
+FLAGS = -g -Wall -Wpadded
 
 #Source Files
 SRC = 8080_emulator.o
 
 #Executable File
-TARGET = emu_make.exe
+TARGET = emu
 
 
 all: $(TARGET)
