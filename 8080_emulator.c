@@ -9,9 +9,6 @@
 #include <stdlib.h>
 #include <stdint.h>
 
-#define NULL8_PTR		((void *)0)
-#define NULL16_PTR		((uint16_t *)0)
-
 #define C			0
 #define B			1
 #define E			2
@@ -93,7 +90,7 @@ static uint16_t sp;
 static uint8_t instruction_register;
 
 //Processor Time
-static uint32_t time = 0;
+static uint32_t time;
 //---
 
 //I/O---
@@ -116,11 +113,11 @@ typedef struct instruction_data
 {
 	uint8_t *const register_1;	//source register or only register mentioned in instruction
 	uint8_t *const register_2;	//destination register
-	uint16_t *const register_pair_1;	//source register pair or only register mentioned in instruction
-	const char name[12];			//Instruction mnemonic		
-	const uint8_t size;			//size of instruction in bytes
-	const uint8_t flags;			//flags triggered by instruction
-	const uint8_t duration;			//number of clock cycles instruction takes (instructions marked that have 0xFF have (11 or 17) cc or (5 or 11) cc
+	uint16_t *const register_pair; 	//source or destination register pair
+	const char name[12];		//Instruction mnemonic		
+	const uint8_t size;		//size of instruction in bytes
+	const uint8_t flags;		//flags triggered by instruction
+	const uint8_t duration;		//number of clock cycles instruction takes (instructions marked that have 0xFF have (11 or 17) cc or (5 or 11) cc
 } data; 
 
 //Function that emulates instruction
@@ -134,325 +131,335 @@ typedef void (*instruction)(data *input);
 //r1 | r2 | rp1 | rp2 | name | size | flags | duration 
 static data instruction_set_data[256] = 
 {
-	/*00*/	{NULL8_PTR, NULL8_PTR, NULL16_PTR, "NOP", 1, NONE, 4 },
-		{NULL8_PTR, NULL8_PTR, ((uint16_t *)register_file) + B_PAIR, "LXI B, D16", 3, NONE, 10},
-	/*02*/	{NULL8_PTR, NULL8_PTR, ((uint16_t *)register_file) + B_PAIR, "STAX B", 1, NONE, 7},
-		{NULL8_PTR, NULL8_PTR, ((uint16_t *)register_file) + B_PAIR, "INX B", 1, NONE, 5},
-	/*04*/	{register_file + B, NULL8_PTR, NULL16_PTR, "INR B", 1, ALL_EXCEPT_CARRY, 5},
-		{register_file + B, NULL8_PTR, NULL16_PTR, "DCR B", 1, ALL_EXCEPT_CARRY, 5},
-	/*06*/ 	{register_file + B, NULL8_PTR, NULL16_PTR, "MVI B, D8", 2, NONE, 7},
-	 	{NULL8_PTR, NULL8_PTR, NULL16_PTR, "RLC", 1, CARRY, 4},
-	/*08*/ 	{NULL8_PTR, NULL8_PTR, NULL16_PTR, "NOP", 1, NONE, 4},
-	 	{NULL8_PTR, NULL8_PTR, ((uint16_t *)register_file) + B_PAIR, "DAD B", 1, CARRY, 10},
-	/*0A*/ 	{NULL8_PTR, NULL8_PTR, ((uint16_t *)register_file) + B_PAIR, "LDAX B", 1, NONE, 7},
-	 	{NULL8_PTR, NULL8_PTR, ((uint16_t *)register_file) + B_PAIR, "DCX B", 1, NONE, 5},
-	/*0C*/ 	{register_file + C, NULL8_PTR, NULL16_PTR, "INR C", 1, ALL_EXCEPT_CARRY, 5},
-	 	{register_file + C, NULL8_PTR, NULL16_PTR, "DCR C", 1, ALL_EXCEPT_CARRY, 5},
-	/*0E*/	{register_file + C, NULL8_PTR, NULL16_PTR, "MVI C, D8", 2, NONE, 7},
-		{NULL8_PTR, NULL8_PTR, NULL16_PTR, "RRC", 1, CARRY, 4},
-	/*10*/	{NULL8_PTR, NULL8_PTR, NULL16_PTR, "NOP", 1, NONE, 4},
-		{NULL8_PTR, NULL8_PTR, ((uint16_t *)register_file) + D_PAIR, "LXI D, D16", 3, NONE, 10},
-	/*12*/	{NULL8_PTR, NULL8_PTR, ((uint16_t *)register_file) + D_PAIR, "STAX D", 1, NONE, 7},
-		{NULL8_PTR, NULL8_PTR, ((uint16_t *)register_file) + D_PAIR, "INX D", 1, NONE, 5},
-	/*14*/	{register_file + D, NULL8_PTR, NULL16_PTR, "INR D", 1, ALL_EXCEPT_CARRY, 5},
-		{register_file + D, NULL8_PTR, NULL16_PTR, "DCR D", 1, ALL_EXCEPT_CARRY, 5},
-	/*16*/	{register_file + D, NULL8_PTR, NULL16_PTR, "MVI D, D8", 2, NONE, 7},
-		{NULL8_PTR, NULL8_PTR, NULL16_PTR, "RAL", 1, CARRY, 4},
-	/*18*/	{NULL8_PTR, NULL8_PTR, NULL16_PTR, "NOP", 1, NONE, 4},
-		{NULL8_PTR, NULL8_PTR, ((uint16_t *)register_file) + D_PAIR, "DAD D", 1, CARRY, 10},
-	/*1A*/	{NULL8_PTR, NULL8_PTR, ((uint16_t *)register_file) + D_PAIR, "LDAX D", 1, NONE, 7},
-		{NULL8_PTR, NULL8_PTR, ((uint16_t *)register_file) + D_PAIR, "DCX D", 1, NONE, 5},
-	/*1C*/	{register_file + E, NULL8_PTR, NULL8_PTR, "INR E", 1, ALL_EXCEPT_CARRY, 5},
-		{register_file + E, NULL8_PTR, NULL8_PTR, "DCR E", 1, ALL_EXCEPT_CARRY, 5},
-	/*1E*/	{register_file + E, NULL8_PTR, NULL8_PTR, "MVI E, D8", 2, NONE, 7},
-		{NULL8_PTR, NULL8_PTR, NULL16_PTR, "RAR", 1, CARRY, 4},
-	/*20*/	{NULL8_PTR, NULL8_PTR, NULL16_PTR, "NOP", 1, NONE, 4},
-		{NULL8_PTR, NULL8_PTR, ((uint16_t *)register_file) + H_PAIR, "LXI H, D16", 3, NONE, 10},
-	/*22*/	{NULL8_PTR, NULL8_PTR, NULL16_PTR, "SHLD ADR", 3, NONE, 16},
-		{NULL8_PTR, NULL8_PTR, ((uint16_t *)register_file) + H_PAIR, "INX H", 1, NONE, 5},
-	/*24*/	{register_file + H, NULL8_PTR, NULL16_PTR, "INR H", 1, ALL_EXCEPT_CARRY, 5},
-		{register_file + H, NULL8_PTR, NULL16_PTR, "DCR H", 1, ALL_EXCEPT_CARRY, 5},
-	/*26*/	{register_file + H, NULL8_PTR, NULL16_PTR, "MVI H, D8", 2, NONE, 7},
-		{NULL8_PTR, NULL8_PTR, NULL16_PTR, "DAA", 1, NONE, 4},
-	/*28*/	{NULL8_PTR, NULL8_PTR, NULL16_PTR, "NOP", 1, NONE, 4},
-		{NULL8_PTR, NULL8_PTR, ((uint16_t *)register_file) + H_PAIR, "DAD H", 1, CARRY, 10},
-	/*2A*/	{NULL8_PTR, NULL8_PTR, ((uint16_t *)register_file) + H_PAIR, "LHLD ADR", 3, NONE, 16},
-		{NULL8_PTR, NULL8_PTR, ((uint16_t *)register_file) + H_PAIR, "DCX H", 1, NONE, 5},
-	/*2C*/	{register_file + L, NULL8_PTR, NULL16_PTR, "INR L", 1, ALL_EXCEPT_CARRY, 5},
-		{register_file + L, NULL8_PTR, NULL16_PTR, "DCR L", 1, ALL_EXCEPT_CARRY, 5},
-	/*2E*/	{register_file + L, NULL8_PTR, NULL16_PTR, "MVI L, D8", 2, NONE, 7},
-		{NULL8_PTR, NULL8_PTR, NULL16_PTR, "CMA", 1, NONE, 4},
-	/*30*/	{NULL8_PTR, NULL8_PTR, NULL16_PTR, "NOP", 1, NONE, 4},
-		{NULL8_PTR, NULL8_PTR, &sp, "LXI SP, D16", 3, NONE, 10},
-	/*32*/	{NULL8_PTR, NULL8_PTR, NULL16_PTR, "STA ADR", 3, NONE, 13},
-		{NULL8_PTR, NULL8_PTR, &sp, "INX SP", 1, NONE, 5},
-	/*34*/	{NULL8_PTR, NULL8_PTR, NULL16_PTR, "INR M", 1, ALL_EXCEPT_CARRY, 10},
-		{NULL8_PTR, NULL8_PTR, NULL16_PTR, "DCR M", 1, ALL_EXCEPT_CARRY, 10},
-	/*36*/	{NULL8_PTR, NULL8_PTR, NULL16_PTR, "MVI M, D8", 2, NONE, 10},
-		{NULL8_PTR, NULL8_PTR, NULL16_PTR, "STC", 1, CARRY, 4},
-	/*38*/	{NULL8_PTR, NULL8_PTR, NULL16_PTR, "NOP", 1, NONE, 4},
-		{NULL8_PTR, NULL8_PTR, &sp, "DAD SP", 1, CARRY, 10},
-	/*3A*/	{NULL8_PTR, NULL8_PTR, NULL16_PTR, "LDA adr", 3, NONE, 13},
-		{NULL8_PTR, NULL8_PTR, &sp, "DCX SP", 1, NONE, 5},
-	/*3C*/	{register_file + A, NULL8_PTR, NULL16_PTR, "INR A", 1, ALL_EXCEPT_CARRY, 5},
-		{register_file + A, NULL8_PTR, NULL16_PTR, "DCR A", 1, ALL_EXCEPT_CARRY, 5},
-	/*3E*/	{register_file + A, NULL8_PTR, NULL16_PTR, "MVI A, D8", 2, NONE, 7},
-		{NULL8_PTR, NULL8_PTR, NULL16_PTR, "CMC", 1, CARRY, 4},
-	/*40*/	{register_file + B, register_file + B, NULL16_PTR, "MOV B, B", 1, NONE, 5},
-		{register_file + C, register_file + B, NULL16_PTR, "MOV B, C", 1, NONE, 5},
-	/*42*/	{register_file + D, register_file + B, NULL16_PTR, "MOV B, D", 1, NONE, 5},
-		{register_file + E, register_file + B, NULL16_PTR, "MOV B, E", 1, NONE, 5},
-	/*44*/	{register_file + H, register_file + B, NULL16_PTR, "MOV B, H", 1, NONE, 5},
-		{register_file + L, register_file + B, NULL16_PTR, "MOV B, L", 1, NONE, 5},
-	/*46*/	{NULL8_PTR, register_file + B, NULL16_PTR, "MOV B, M", 1, NONE, 7},
-		{register_file + A, register_file + B, NULL16_PTR, "MOV B, A", 1, NONE, 5},
-	/*48*/	{register_file + B, register_file + C, NULL16_PTR, "MOV C, B", 1, NONE, 5},
-		{register_file + C, register_file + C, NULL16_PTR, "MOV C, C", 1, NONE, 5},
-	/*4A*/	{register_file + D, register_file + C, NULL16_PTR, "MOV C, D", 1, NONE, 5},
-		{register_file + E, register_file + C, NULL16_PTR, "MOV C, E", 1, NONE, 5},
-	/*4C*/	{register_file + H, register_file + C, NULL16_PTR, "MOV C, H", 1, NONE, 5},
-		{register_file + L, register_file + C, NULL16_PTR, "MOV C, L", 1, NONE, 5},
-	/*4E*/	{NULL8_PTR, register_file + C, NULL16_PTR, "MOV C, M", 1, NONE, 7},
-		{register_file + A, register_file + C, NULL16_PTR, "MOV C, A", 1, NONE, 5},
-	/*50*/	{register_file + B, register_file + D, NULL16_PTR, "MOV D, B", 1, NONE, 5},
-		{register_file + C, register_file + D, NULL16_PTR, "MOV D, C", 1, NONE, 5},
-	/*52*/	{register_file + D, register_file + D, NULL16_PTR, "MOV D, D", 1, NONE, 5},
-		{register_file + E, register_file + D, NULL16_PTR, "MOV D, E", 1, NONE, 5},
-	/*54*/	{register_file + H, register_file + D, NULL16_PTR, "MOV D, H", 1, NONE, 5},
-		{register_file + L, register_file + D, NULL16_PTR, "MOV D, L", 1, NONE, 5},
-	/*56*/	{NULL8_PTR, register_file + D, NULL16_PTR, "MOV D, M", 1, NONE, 7},
-		{register_file + A, register_file + D, NULL16_PTR, "MOV D, A", 1, NONE, 5},
-	/*58*/	{register_file + B, register_file + E, NULL16_PTR, "MOV E, B", 1, NONE, 5},
-		{register_file + C, register_file + E, NULL16_PTR, "MOV E, C", 1, NONE, 5},
-	/*5A*/	{register_file + D, register_file + E, NULL16_PTR, "MOV E, D", 1, NONE, 5},
-		{register_file + E, register_file + E, NULL16_PTR, "MOV E, E", 1, NONE, 5},
-	/*5C*/	{register_file + H, register_file + E, NULL16_PTR, "MOV E, H", 1, NONE, 5},
-		{register_file + L, register_file + E, NULL16_PTR, "MOV E, L", 1, NONE, 5},
-	/*5E*/	{NULL8_PTR, register_file + E, NULL16_PTR, "MOV E, M", 1, NONE, 7},
-		{register_file + A, register_file + E, NULL16_PTR, "MOV E, A", 1, NONE, 5},
-	/*60*/	{register_file + B, register_file + H, NULL16_PTR, "MOV H, B", 1, NONE, 5},
-		{register_file + C, register_file + H, NULL16_PTR, "MOV H, C", 1, NONE, 5},
-	/*62*/	{register_file + D, register_file + H, NULL16_PTR, "MOV H, D", 1, NONE, 5},
-		{register_file + E, register_file + H, NULL16_PTR, "MOV H, E", 1, NONE, 5},
-	/*64*/	{register_file + H, register_file + H, NULL16_PTR, "MOV H, H", 1, NONE, 5},
-		{register_file + L, register_file + H, NULL16_PTR, "MOV H, L", 1, NONE, 5},
-	/*66*/	{NULL8_PTR, register_file + H, NULL16_PTR, "MOV H, M", 1, NONE, 7},
-		{register_file + A, register_file + H, NULL16_PTR, "MOV H, A", 1, NONE, 5},
-	/*68*/	{register_file + B, register_file + L, NULL16_PTR, "MOV L, B", 1, NONE, 5},
-		{register_file + C, register_file + L, NULL16_PTR, "MOV L, C", 1, NONE, 5},
-	/*6A*/	{register_file + D, register_file + L, NULL16_PTR, "MOV L, D", 1, NONE, 5},
-		{register_file + E, register_file + L, NULL16_PTR, "MOV L, E", 1, NONE, 5},
-	/*6C*/	{register_file + H, register_file + L, NULL16_PTR, "MOV L, H", 1, NONE, 5},
-		{register_file + L, register_file + L, NULL16_PTR, "MOV L, L", 1, NONE, 5},
-	/*6E*/	{NULL8_PTR, register_file + L, NULL16_PTR, "MOV L, M", 1, NONE, 7},
-		{register_file + A, register_file + L, NULL16_PTR, "MOV L, A", 1, NONE, 5},
-	/*70*/	{register_file + B, NULL8_PTR, NULL16_PTR, "MOV M, B", 1, NONE, 7}, 
-		{register_file + C, NULL8_PTR, NULL16_PTR, "MOV M, C", 1, NONE, 7}, 
-	/*72*/	{register_file + D, NULL8_PTR, NULL16_PTR, "MOV M, D", 1, NONE, 7}, 
-		{register_file + E, NULL8_PTR, NULL16_PTR, "MOV M, E", 1, NONE, 7}, 
-	/*74*/	{register_file + H, NULL8_PTR, NULL16_PTR, "MOV M, H", 1, NONE, 7}, 
-		{register_file + L, NULL8_PTR, NULL16_PTR, "MOV M, L", 1, NONE, 7}, 
-	/*76*/	{NULL8_PTR, NULL8_PTR, NULL16_PTR, "HLT", 1, NONE, 7}, 
-		{register_file + A, NULL8_PTR, NULL16_PTR, "MOV M, A", 1, NONE, 7},
-	/*78*/	{register_file + B, register_file + A, NULL16_PTR, "MOV A, B", 1, NONE, 5},
-		{register_file + C, register_file + A, NULL16_PTR, "MOV A, C", 1, NONE, 5},
-	/*7A*/	{register_file + D, register_file + A, NULL16_PTR, "MOV A, D", 1, NONE, 5},
-		{register_file + E, register_file + A, NULL16_PTR, "MOV A, E", 1, NONE, 5},
-	/*7C*/	{register_file + H, register_file + A, NULL16_PTR, "MOV A, H", 1, NONE, 5},
-		{register_file + L, register_file + A, NULL16_PTR, "MOV A, L", 1, NONE, 5},
-	/*7E*/	{NULL8_PTR, register_file + A, NULL16_PTR, "MOV A, M", 1, NONE, 7},
-		{register_file + A, register_file + A, NULL16_PTR, "MOV A, A", 1, NONE, 5},
- 	/*80*/	{register_file + B, NULL8_PTR, NULL16_PTR, "ADD B", 1, ALL, 4},
-		{register_file + C, NULL8_PTR, NULL16_PTR, "ADD C", 1, ALL, 4},
-	/*82*/	{register_file + D, NULL8_PTR, NULL16_PTR, "ADD D", 1, ALL, 4},
-		{register_file + E, NULL8_PTR, NULL16_PTR, "ADD E", 1, ALL, 4},
-	/*84*/	{register_file + H, NULL8_PTR, NULL16_PTR, "ADD H", 1, ALL, 4},
-		{register_file + L, NULL8_PTR, NULL16_PTR, "ADD L", 1, ALL, 4},
-	/*86*/	{NULL8_PTR, NULL8_PTR, NULL16_PTR, "ADD M", 1, ALL, 7},
-		{register_file + A, NULL8_PTR, NULL16_PTR, "ADD A", 1, ALL, 4},
-	/*88*/	{register_file + B, NULL8_PTR, NULL16_PTR, "ADC B", 1, ALL, 4},
-		{register_file + C, NULL8_PTR, NULL16_PTR, "ADC C", 1, ALL, 4},
-	/*8A*/	{register_file + D, NULL8_PTR, NULL16_PTR, "ADC D", 1, ALL, 4},
-		{register_file + E, NULL8_PTR, NULL16_PTR, "ADC E", 1, ALL, 4},
-	/*8C*/	{register_file + H, NULL8_PTR, NULL16_PTR, "ADC H", 1, ALL, 4},
-		{register_file + L, NULL8_PTR, NULL16_PTR, "ADC L", 1, ALL, 4},
-	/*8E*/	{NULL8_PTR, NULL8_PTR, NULL16_PTR, "ADC M", 1, ALL, 7},
-		{register_file + A, NULL8_PTR, NULL16_PTR, "ADC A", 1, ALL, 4},
-	/*90*/	{register_file + B, NULL8_PTR, NULL16_PTR, "SUB B", 1, ALL, 4},
-		{register_file + C, NULL8_PTR, NULL16_PTR, "SUB C", 1, ALL, 4},
-	/*92*/	{register_file + D, NULL8_PTR, NULL16_PTR, "SUB D", 1, ALL, 4},
-		{register_file + E, NULL8_PTR, NULL16_PTR, "SUB E", 1, ALL, 4},
-	/*94*/	{register_file + H, NULL8_PTR, NULL16_PTR, "SUB H", 1, ALL, 4},
-		{register_file + L, NULL8_PTR, NULL16_PTR, "SUB L", 1, ALL, 4},
-	/*96*/	{NULL8_PTR, NULL8_PTR, NULL16_PTR, "SUB M", 1, ALL, 7},
-		{register_file + A, NULL8_PTR, NULL16_PTR, "SUB A", 1, ALL, 4},
-	/*98*/	{register_file + B, NULL8_PTR, NULL16_PTR, "SBB B", 1, ALL, 4},
-		{register_file + C, NULL8_PTR, NULL16_PTR, "SBB C", 1, ALL, 4},
-	/*9A*/	{register_file + D, NULL8_PTR, NULL16_PTR, "SBB D", 1, ALL, 4},
-		{register_file + E, NULL8_PTR, NULL16_PTR, "SBB E", 1, ALL, 4},
-	/*9C*/	{register_file + H, NULL8_PTR, NULL16_PTR, "SBB H", 1, ALL, 4},
-		{register_file + L, NULL8_PTR, NULL16_PTR, "SBB L", 1, ALL, 4},
-	/*9E*/	{NULL8_PTR, NULL8_PTR, NULL16_PTR, "SBB M", 1, ALL, 7},
-		{register_file + A, NULL8_PTR, NULL16_PTR, "SBB A", 1, ALL, 4},
-	/*A0*/	{register_file + B, NULL8_PTR, NULL16_PTR, "ANA B", 1, ALL, 4},
-		{register_file + C, NULL8_PTR, NULL16_PTR, "ANA C", 1, ALL, 4},
-	/*A2*/	{register_file + D, NULL8_PTR, NULL16_PTR, "ANA D", 1, ALL, 4},
-		{register_file + E, NULL8_PTR, NULL16_PTR, "ANA E", 1, ALL, 4},
-	/*A4*/	{register_file + H, NULL8_PTR, NULL16_PTR, "ANA H", 1, ALL, 4},
-		{register_file + L, NULL8_PTR, NULL16_PTR, "ANA L", 1, ALL, 4},
-	/*A6*/	{NULL8_PTR, NULL8_PTR, NULL16_PTR, "ANA M", 1, ALL, 7},
-		{register_file + A, NULL8_PTR, NULL16_PTR, "ANA A", 1, ALL, 4},
-	/*A8*/	{register_file + B, NULL8_PTR, NULL16_PTR, "XRA B", 1, ALL, 4},
-		{register_file + C, NULL8_PTR, NULL16_PTR, "XRA C", 1, ALL, 4},
-	/*AA*/	{register_file + D, NULL8_PTR, NULL16_PTR, "XRA D", 1, ALL, 4},
-		{register_file + E, NULL8_PTR, NULL16_PTR, "XRA E", 1, ALL, 4},
-	/*AC*/	{register_file + H, NULL8_PTR, NULL16_PTR, "XRA H", 1, ALL, 4},
-		{register_file + L, NULL8_PTR, NULL16_PTR, "XRA L", 1, ALL, 4},
-	/*AE*/	{NULL8_PTR, NULL8_PTR, NULL16_PTR, "XRA M", 1, ALL, 7},
-		{register_file + A, NULL8_PTR, NULL16_PTR, "XRA A", 1, ALL, 4},
-	/*B0*/	{register_file + B, NULL8_PTR, NULL16_PTR, "ORA B", 1, ALL, 4},
-		{register_file + C, NULL8_PTR, NULL16_PTR, "ORA C", 1, ALL, 4},
-	/*B2*/	{register_file + D, NULL8_PTR, NULL16_PTR, "ORA D", 1, ALL, 4},
-		{register_file + E, NULL8_PTR, NULL16_PTR, "ORA E", 1, ALL, 4},
-	/*B4*/	{register_file + H, NULL8_PTR, NULL16_PTR, "ORA H", 1, ALL, 4},
-		{register_file + L, NULL8_PTR, NULL16_PTR, "ORA L", 1, ALL, 4},
-	/*B6*/	{NULL8_PTR, NULL8_PTR, NULL16_PTR, "ORA M", 1, ALL, 7},
-		{register_file + A, NULL8_PTR, NULL16_PTR, "ORA A", 1, ALL, 4},
-	/*B8*/	{register_file + B, NULL8_PTR, NULL16_PTR, "CMP B", 1, ALL, 4},
-		{register_file + C, NULL8_PTR, NULL16_PTR, "CMP C", 1, ALL, 4},
-	/*BA*/	{register_file + D, NULL8_PTR, NULL16_PTR, "CMP D", 1, ALL, 4},
-		{register_file + E, NULL8_PTR, NULL16_PTR, "CMP E", 1, ALL, 4},
-	/*BC*/	{register_file + H, NULL8_PTR, NULL16_PTR, "CMP H", 1, ALL, 4},
-		{register_file + L, NULL8_PTR, NULL16_PTR, "CMP L", 1, ALL, 4},
-	/*BE*/	{NULL8_PTR, NULL8_PTR, NULL16_PTR, "CMP M", 1, ALL, 7},
-		{register_file + A, NULL8_PTR, NULL16_PTR, "CMP A", 1, ALL, 4},
-	/*C0*/	{NULL8_PTR, NULL8_PTR, NULL16_PTR, "RNZ", 1, NONE, 0xFF},
-		{NULL8_PTR, NULL8_PTR, ((uint16_t *)register_file) + B_PAIR, "POP B", 1, NONE, 10},
-	/*C2*/	{NULL8_PTR, NULL8_PTR, NULL16_PTR, "JNZ ADR", 3, NONE, 10},
-		{NULL8_PTR, NULL8_PTR, NULL16_PTR, "JMP ADR", 3, NONE, 10},
-	/*C4*/	{NULL8_PTR, NULL8_PTR, NULL16_PTR, "CNZ ADR", 3, NONE, 0xFF},
-		{NULL8_PTR, NULL8_PTR, ((uint16_t *)register_file) + B_PAIR, "PUSH B", 1, NONE, 11},
-	/*C6*/	{NULL8_PTR, NULL8_PTR, NULL16_PTR, "ADI D8", 2, ALL, 7},
-		{NULL8_PTR, NULL8_PTR, NULL16_PTR, "RST 0", 1, NONE, 11},
-	/*C8*/	{NULL8_PTR, NULL8_PTR, NULL16_PTR, "RZ", 1, NONE, 0xFF},
-		{NULL8_PTR, NULL8_PTR, NULL16_PTR, "RET", 1, NONE, 10},
-	/*CA*/	{NULL8_PTR, NULL8_PTR, NULL16_PTR, "JZ ADR", 3, NONE, 10},
-		{NULL8_PTR, NULL8_PTR, NULL16_PTR, "NOP", 1, NONE, 4},
-	/*CC*/	{NULL8_PTR, NULL8_PTR, NULL16_PTR, "CZ ADR", 3, NONE, 0xFF},
-		{NULL8_PTR, NULL8_PTR, NULL16_PTR, "CALL ADR", 3, NONE, 17},
-	/*CE*/	{NULL8_PTR, NULL8_PTR, NULL16_PTR, "ACI D8", 2, ALL, 7},
-		{NULL8_PTR, NULL8_PTR, NULL16_PTR, "RST 1", 1, NONE, 11},
-	/*D0*/	{NULL8_PTR, NULL8_PTR, NULL16_PTR, "RNC", 1, NONE, 0xFF},
-		{NULL8_PTR, NULL8_PTR, ((uint16_t *)register_file) + D_PAIR, "POP D", 1, NONE, 10},
-	/*D2*/	{NULL8_PTR, NULL8_PTR, NULL16_PTR, "JNC ADR", 3, NONE, 10},
-		{NULL8_PTR, NULL8_PTR, NULL16_PTR, "OUT D8", 2, NONE, 10},
-	/*D4*/	{NULL8_PTR, NULL8_PTR, NULL16_PTR, "CNC ADR", 3, NONE, 0xFF},
-		{NULL8_PTR, NULL8_PTR, ((uint16_t *)register_file) + D_PAIR, "PUSH D", 1, NONE, 11},
-	/*D6*/	{NULL8_PTR, NULL8_PTR, NULL16_PTR, "SUI D8", 2, ALL, 7},
-		{NULL8_PTR, NULL8_PTR, NULL16_PTR, "RST 2", 1, NONE, 11},
-	/*D8*/	{NULL8_PTR, NULL8_PTR, NULL16_PTR, "RC", 1, NONE, 0xFF},
-		{NULL8_PTR, NULL8_PTR, NULL16_PTR, "NOP", 1, NONE, 4},
-	/*DA*/	{NULL8_PTR, NULL8_PTR, NULL16_PTR, "JC ADR", 3, NONE, 10},
-		{NULL8_PTR, NULL8_PTR, NULL16_PTR, "IN D8", 2, NONE, 10},
-	/*DC*/	{NULL8_PTR, NULL8_PTR, NULL16_PTR, "CC ADR", 3, NONE, 0xFF},
-		{NULL8_PTR, NULL8_PTR, NULL16_PTR, "NOP", 1, NONE, 4},
-	/*DE*/	{NULL8_PTR, NULL8_PTR, NULL16_PTR, "SBI D8", 2, ALL, 7},
-		{NULL8_PTR, NULL8_PTR, NULL16_PTR, "RST 3", 1, NONE, 11},
-	/*E0*/	{NULL8_PTR, NULL8_PTR, NULL16_PTR, "RPO", 1, NONE, 0xFF},
-		{NULL8_PTR, NULL8_PTR, ((uint16_t *)register_file) + H_PAIR, "POP H", 1, NONE, 10},
-	/*E2*/	{NULL8_PTR, NULL8_PTR, NULL16_PTR, "JPO ADR", 3, NONE, 10},
-		{NULL8_PTR, NULL8_PTR, NULL16_PTR, "XTHL", 1, NONE, 18},
-	/*E4*/	{NULL8_PTR, NULL8_PTR, NULL16_PTR, "CPO ADR", 3, NONE, 0xFF},
-		{NULL8_PTR, NULL8_PTR, ((uint16_t *)register_file) + H_PAIR, "PUSH H", 1, NONE, 11},
-	/*E6*/	{NULL8_PTR, NULL8_PTR, NULL16_PTR, "ANI D8", 2, ALL, 7},
-		{NULL8_PTR, NULL8_PTR, NULL16_PTR, "RST 4", 1, NONE, 11},
-	/*E8*/	{NULL8_PTR, NULL8_PTR, NULL16_PTR, "RPE", 1, NONE, 0xFF},
-		{NULL8_PTR, NULL8_PTR, NULL16_PTR, "PCHL", 1, NONE, 5},
-	/*EA*/	{NULL8_PTR, NULL8_PTR, NULL16_PTR, "JPE ADR", 3, NONE, 10},
-		{NULL8_PTR, NULL8_PTR, NULL16_PTR, "XCHG", 1, NONE, 4},
-	/*EC*/	{NULL8_PTR, NULL8_PTR, NULL16_PTR, "CPE ADR", 3, NONE, 0xFF},
-		{NULL8_PTR, NULL8_PTR, NULL16_PTR, "NOP", 1, NONE, 4},
-	/*EE*/	{NULL8_PTR, NULL8_PTR, NULL16_PTR, "XRI D8", 2, ALL, 7},
-		{NULL8_PTR, NULL8_PTR, NULL16_PTR, "RST 5", 1, NONE, 11},
-	/*F0*/	{NULL8_PTR, NULL8_PTR, NULL16_PTR, "RP", 1, NONE, 0xFF},
-		{NULL8_PTR, NULL8_PTR, ((uint16_t *)register_file) + PSW, "POP PSW", 1, NONE, 10},
-	/*F2*/	{NULL8_PTR, NULL8_PTR, NULL16_PTR, "JP ADR", 3, NONE, 10},
-		{NULL8_PTR, NULL8_PTR, NULL16_PTR, "DI", 1, NONE, 4},
-	/*F4*/	{NULL8_PTR, NULL8_PTR, NULL16_PTR, "CP ADR", 3, NONE, 0xFF},
-		{NULL8_PTR, NULL8_PTR, ((uint16_t *)register_file) + PSW, "PUSH PSW", 1, NONE, 11},
-	/*F6*/	{NULL8_PTR, NULL8_PTR, NULL16_PTR, "ORI D8", 2, ALL, 7},
-		{NULL8_PTR, NULL8_PTR, NULL16_PTR, "RST 6", 1, NONE, 11},
-	/*F8*/	{NULL8_PTR, NULL8_PTR, NULL16_PTR, "RM", 1, NONE, 0xFF},
-		{NULL8_PTR, NULL8_PTR, NULL16_PTR, "SPHL", 1, NONE, 5},
-	/*FA*/	{NULL8_PTR, NULL8_PTR, NULL16_PTR, "JM ADR", 3, NONE, 10},
-		{NULL8_PTR, NULL8_PTR, NULL16_PTR, "EI", 1, NONE, 4},
-	/*FC*/	{NULL8_PTR, NULL8_PTR, NULL16_PTR, "CM ADR", 3, NONE, 0xFF},
-		{NULL8_PTR, NULL8_PTR, NULL16_PTR, "NOP", 1, NONE, 4},
-	/*FE*/	{NULL8_PTR, NULL8_PTR, NULL16_PTR, "CPI D8", 2, ALL, 7},
-		{NULL8_PTR, NULL8_PTR, NULL16_PTR, "RST 7", 1, NONE, 11}	
+	/*00*/	{NULL, NULL, NULL, "NOP", 1, NONE, 4 },
+		{NULL, NULL, ((uint16_t *)register_file) + B_PAIR, "LXI B, D16", 3, NONE, 10},
+	/*02*/	{NULL, NULL, ((uint16_t *)register_file) + B_PAIR, "STAX B", 1, NONE, 7},
+		{NULL, NULL, ((uint16_t *)register_file) + B_PAIR, "INX B", 1, NONE, 5},
+	/*04*/	{register_file + B, NULL, NULL, "INR B", 1, ALL_EXCEPT_CARRY, 5},
+		{register_file + B, NULL, NULL, "DCR B", 1, ALL_EXCEPT_CARRY, 5},
+	/*06*/ 	{register_file + B, NULL, NULL, "MVI B, D8", 2, NONE, 7},
+	 	{NULL, NULL, NULL, "RLC", 1, CARRY, 4},
+	/*08*/ 	{NULL, NULL, NULL, "NOP", 1, NONE, 4},
+	 	{NULL, NULL, ((uint16_t *)register_file) + B_PAIR, "DAD B", 1, CARRY, 10},
+	/*0A*/ 	{NULL, NULL, ((uint16_t *)register_file) + B_PAIR, "LDAX B", 1, NONE, 7},
+	 	{NULL, NULL, ((uint16_t *)register_file) + B_PAIR, "DCX B", 1, NONE, 5},
+	/*0C*/ 	{register_file + C, NULL, NULL, "INR C", 1, ALL_EXCEPT_CARRY, 5},
+	 	{register_file + C, NULL, NULL, "DCR C", 1, ALL_EXCEPT_CARRY, 5},
+	/*0E*/	{register_file + C, NULL, NULL, "MVI C, D8", 2, NONE, 7},
+		{NULL, NULL, NULL, "RRC", 1, CARRY, 4},
+	/*10*/	{NULL, NULL, NULL, "NOP", 1, NONE, 4},
+		{NULL, NULL, ((uint16_t *)register_file) + D_PAIR, "LXI D, D16", 3, NONE, 10},
+	/*12*/	{NULL, NULL, ((uint16_t *)register_file) + D_PAIR, "STAX D", 1, NONE, 7},
+		{NULL, NULL, ((uint16_t *)register_file) + D_PAIR, "INX D", 1, NONE, 5},
+	/*14*/	{register_file + D, NULL, NULL, "INR D", 1, ALL_EXCEPT_CARRY, 5},
+		{register_file + D, NULL, NULL, "DCR D", 1, ALL_EXCEPT_CARRY, 5},
+	/*16*/	{register_file + D, NULL, NULL, "MVI D, D8", 2, NONE, 7},
+		{NULL, NULL, NULL, "RAL", 1, CARRY, 4},
+	/*18*/	{NULL, NULL, NULL, "NOP", 1, NONE, 4},
+		{NULL, NULL, ((uint16_t *)register_file) + D_PAIR, "DAD D", 1, CARRY, 10},
+	/*1A*/	{NULL, NULL, ((uint16_t *)register_file) + D_PAIR, "LDAX D", 1, NONE, 7},
+		{NULL, NULL, ((uint16_t *)register_file) + D_PAIR, "DCX D", 1, NONE, 5},
+	/*1C*/	{register_file + E, NULL, NULL, "INR E", 1, ALL_EXCEPT_CARRY, 5},
+		{register_file + E, NULL, NULL, "DCR E", 1, ALL_EXCEPT_CARRY, 5},
+	/*1E*/	{register_file + E, NULL, NULL, "MVI E, D8", 2, NONE, 7},
+		{NULL, NULL, NULL, "RAR", 1, CARRY, 4},
+	/*20*/	{NULL, NULL, NULL, "NOP", 1, NONE, 4},
+		{NULL, NULL, ((uint16_t *)register_file) + H_PAIR, "LXI H, D16", 3, NONE, 10},
+	/*22*/	{NULL, NULL, NULL, "SHLD ADR", 3, NONE, 16},
+		{NULL, NULL, ((uint16_t *)register_file) + H_PAIR, "INX H", 1, NONE, 5},
+	/*24*/	{register_file + H, NULL, NULL, "INR H", 1, ALL_EXCEPT_CARRY, 5},
+		{register_file + H, NULL, NULL, "DCR H", 1, ALL_EXCEPT_CARRY, 5},
+	/*26*/	{register_file + H, NULL, NULL, "MVI H, D8", 2, NONE, 7},
+		{NULL, NULL, NULL, "DAA", 1, NONE, 4},
+	/*28*/	{NULL, NULL, NULL, "NOP", 1, NONE, 4},
+		{NULL, NULL, ((uint16_t *)register_file) + H_PAIR, "DAD H", 1, CARRY, 10},
+	/*2A*/	{NULL, NULL, ((uint16_t *)register_file) + H_PAIR, "LHLD ADR", 3, NONE, 16},
+		{NULL, NULL, ((uint16_t *)register_file) + H_PAIR, "DCX H", 1, NONE, 5},
+	/*2C*/	{register_file + L, NULL, NULL, "INR L", 1, ALL_EXCEPT_CARRY, 5},
+		{register_file + L, NULL, NULL, "DCR L", 1, ALL_EXCEPT_CARRY, 5},
+	/*2E*/	{register_file + L, NULL, NULL, "MVI L, D8", 2, NONE, 7},
+		{NULL, NULL, NULL, "CMA", 1, NONE, 4},
+	/*30*/	{NULL, NULL, NULL, "NOP", 1, NONE, 4},
+		{NULL, NULL, &sp, "LXI SP, D16", 3, NONE, 10},
+	/*32*/	{NULL, NULL, NULL, "STA ADR", 3, NONE, 13},
+		{NULL, NULL, &sp, "INX SP", 1, NONE, 5},
+	/*34*/	{NULL, NULL, NULL, "INR M", 1, ALL_EXCEPT_CARRY, 10},
+		{NULL, NULL, NULL, "DCR M", 1, ALL_EXCEPT_CARRY, 10},
+	/*36*/	{NULL, NULL, NULL, "MVI M, D8", 2, NONE, 10},
+		{NULL, NULL, NULL, "STC", 1, CARRY, 4},
+	/*38*/	{NULL, NULL, NULL, "NOP", 1, NONE, 4},
+		{NULL, NULL, &sp, "DAD SP", 1, CARRY, 10},
+	/*3A*/	{NULL, NULL, NULL, "LDA adr", 3, NONE, 13},
+		{NULL, NULL, &sp, "DCX SP", 1, NONE, 5},
+	/*3C*/	{register_file + A, NULL, NULL, "INR A", 1, ALL_EXCEPT_CARRY, 5},
+		{register_file + A, NULL, NULL, "DCR A", 1, ALL_EXCEPT_CARRY, 5},
+	/*3E*/	{register_file + A, NULL, NULL, "MVI A, D8", 2, NONE, 7},
+		{NULL, NULL, NULL, "CMC", 1, CARRY, 4},
+	/*40*/	{register_file + B, register_file + B, NULL, "MOV B, B", 1, NONE, 5},
+		{register_file + C, register_file + B, NULL, "MOV B, C", 1, NONE, 5},
+	/*42*/	{register_file + D, register_file + B, NULL, "MOV B, D", 1, NONE, 5},
+		{register_file + E, register_file + B, NULL, "MOV B, E", 1, NONE, 5},
+	/*44*/	{register_file + H, register_file + B, NULL, "MOV B, H", 1, NONE, 5},
+		{register_file + L, register_file + B, NULL, "MOV B, L", 1, NONE, 5},
+	/*46*/	{NULL, register_file + B, NULL, "MOV B, M", 1, NONE, 7},
+		{register_file + A, register_file + B, NULL, "MOV B, A", 1, NONE, 5},
+	/*48*/	{register_file + B, register_file + C, NULL, "MOV C, B", 1, NONE, 5},
+		{register_file + C, register_file + C, NULL, "MOV C, C", 1, NONE, 5},
+	/*4A*/	{register_file + D, register_file + C, NULL, "MOV C, D", 1, NONE, 5},
+		{register_file + E, register_file + C, NULL, "MOV C, E", 1, NONE, 5},
+	/*4C*/	{register_file + H, register_file + C, NULL, "MOV C, H", 1, NONE, 5},
+		{register_file + L, register_file + C, NULL, "MOV C, L", 1, NONE, 5},
+	/*4E*/	{NULL, register_file + C, NULL, "MOV C, M", 1, NONE, 7},
+		{register_file + A, register_file + C, NULL, "MOV C, A", 1, NONE, 5},
+	/*50*/	{register_file + B, register_file + D, NULL, "MOV D, B", 1, NONE, 5},
+		{register_file + C, register_file + D, NULL, "MOV D, C", 1, NONE, 5},
+	/*52*/	{register_file + D, register_file + D, NULL, "MOV D, D", 1, NONE, 5},
+		{register_file + E, register_file + D, NULL, "MOV D, E", 1, NONE, 5},
+	/*54*/	{register_file + H, register_file + D, NULL, "MOV D, H", 1, NONE, 5},
+		{register_file + L, register_file + D, NULL, "MOV D, L", 1, NONE, 5},
+	/*56*/	{NULL, register_file + D, NULL, "MOV D, M", 1, NONE, 7},
+		{register_file + A, register_file + D, NULL, "MOV D, A", 1, NONE, 5},
+	/*58*/	{register_file + B, register_file + E, NULL, "MOV E, B", 1, NONE, 5},
+		{register_file + C, register_file + E, NULL, "MOV E, C", 1, NONE, 5},
+	/*5A*/	{register_file + D, register_file + E, NULL, "MOV E, D", 1, NONE, 5},
+		{register_file + E, register_file + E, NULL, "MOV E, E", 1, NONE, 5},
+	/*5C*/	{register_file + H, register_file + E, NULL, "MOV E, H", 1, NONE, 5},
+		{register_file + L, register_file + E, NULL, "MOV E, L", 1, NONE, 5},
+	/*5E*/	{NULL, register_file + E, NULL, "MOV E, M", 1, NONE, 7},
+		{register_file + A, register_file + E, NULL, "MOV E, A", 1, NONE, 5},
+	/*60*/	{register_file + B, register_file + H, NULL, "MOV H, B", 1, NONE, 5},
+		{register_file + C, register_file + H, NULL, "MOV H, C", 1, NONE, 5},
+	/*62*/	{register_file + D, register_file + H, NULL, "MOV H, D", 1, NONE, 5},
+		{register_file + E, register_file + H, NULL, "MOV H, E", 1, NONE, 5},
+	/*64*/	{register_file + H, register_file + H, NULL, "MOV H, H", 1, NONE, 5},
+		{register_file + L, register_file + H, NULL, "MOV H, L", 1, NONE, 5},
+	/*66*/	{NULL, register_file + H, NULL, "MOV H, M", 1, NONE, 7},
+		{register_file + A, register_file + H, NULL, "MOV H, A", 1, NONE, 5},
+	/*68*/	{register_file + B, register_file + L, NULL, "MOV L, B", 1, NONE, 5},
+		{register_file + C, register_file + L, NULL, "MOV L, C", 1, NONE, 5},
+	/*6A*/	{register_file + D, register_file + L, NULL, "MOV L, D", 1, NONE, 5},
+		{register_file + E, register_file + L, NULL, "MOV L, E", 1, NONE, 5},
+	/*6C*/	{register_file + H, register_file + L, NULL, "MOV L, H", 1, NONE, 5},
+		{register_file + L, register_file + L, NULL, "MOV L, L", 1, NONE, 5},
+	/*6E*/	{NULL, register_file + L, NULL, "MOV L, M", 1, NONE, 7},
+		{register_file + A, register_file + L, NULL, "MOV L, A", 1, NONE, 5},
+	/*70*/	{register_file + B, NULL, NULL, "MOV M, B", 1, NONE, 7}, 
+		{register_file + C, NULL, NULL, "MOV M, C", 1, NONE, 7}, 
+	/*72*/	{register_file + D, NULL, NULL, "MOV M, D", 1, NONE, 7}, 
+		{register_file + E, NULL, NULL, "MOV M, E", 1, NONE, 7}, 
+	/*74*/	{register_file + H, NULL, NULL, "MOV M, H", 1, NONE, 7}, 
+		{register_file + L, NULL, NULL, "MOV M, L", 1, NONE, 7}, 
+	/*76*/	{NULL, NULL, NULL, "HLT", 1, NONE, 7}, 
+		{register_file + A, NULL, NULL, "MOV M, A", 1, NONE, 7},
+	/*78*/	{register_file + B, register_file + A, NULL, "MOV A, B", 1, NONE, 5},
+		{register_file + C, register_file + A, NULL, "MOV A, C", 1, NONE, 5},
+	/*7A*/	{register_file + D, register_file + A, NULL, "MOV A, D", 1, NONE, 5},
+		{register_file + E, register_file + A, NULL, "MOV A, E", 1, NONE, 5},
+	/*7C*/	{register_file + H, register_file + A, NULL, "MOV A, H", 1, NONE, 5},
+		{register_file + L, register_file + A, NULL, "MOV A, L", 1, NONE, 5},
+	/*7E*/	{NULL, register_file + A, NULL, "MOV A, M", 1, NONE, 7},
+		{register_file + A, register_file + A, NULL, "MOV A, A", 1, NONE, 5},
+ 	/*80*/	{register_file + B, NULL, NULL, "ADD B", 1, ALL, 4},
+		{register_file + C, NULL, NULL, "ADD C", 1, ALL, 4},
+	/*82*/	{register_file + D, NULL, NULL, "ADD D", 1, ALL, 4},
+		{register_file + E, NULL, NULL, "ADD E", 1, ALL, 4},
+	/*84*/	{register_file + H, NULL, NULL, "ADD H", 1, ALL, 4},
+		{register_file + L, NULL, NULL, "ADD L", 1, ALL, 4},
+	/*86*/	{NULL, NULL, NULL, "ADD M", 1, ALL, 7},
+		{register_file + A, NULL, NULL, "ADD A", 1, ALL, 4},
+	/*88*/	{register_file + B, NULL, NULL, "ADC B", 1, ALL, 4},
+		{register_file + C, NULL, NULL, "ADC C", 1, ALL, 4},
+	/*8A*/	{register_file + D, NULL, NULL, "ADC D", 1, ALL, 4},
+		{register_file + E, NULL, NULL, "ADC E", 1, ALL, 4},
+	/*8C*/	{register_file + H, NULL, NULL, "ADC H", 1, ALL, 4},
+		{register_file + L, NULL, NULL, "ADC L", 1, ALL, 4},
+	/*8E*/	{NULL, NULL, NULL, "ADC M", 1, ALL, 7},
+		{register_file + A, NULL, NULL, "ADC A", 1, ALL, 4},
+	/*90*/	{register_file + B, NULL, NULL, "SUB B", 1, ALL, 4},
+		{register_file + C, NULL, NULL, "SUB C", 1, ALL, 4},
+	/*92*/	{register_file + D, NULL, NULL, "SUB D", 1, ALL, 4},
+		{register_file + E, NULL, NULL, "SUB E", 1, ALL, 4},
+	/*94*/	{register_file + H, NULL, NULL, "SUB H", 1, ALL, 4},
+		{register_file + L, NULL, NULL, "SUB L", 1, ALL, 4},
+	/*96*/	{NULL, NULL, NULL, "SUB M", 1, ALL, 7},
+		{register_file + A, NULL, NULL, "SUB A", 1, ALL, 4},
+	/*98*/	{register_file + B, NULL, NULL, "SBB B", 1, ALL, 4},
+		{register_file + C, NULL, NULL, "SBB C", 1, ALL, 4},
+	/*9A*/	{register_file + D, NULL, NULL, "SBB D", 1, ALL, 4},
+		{register_file + E, NULL, NULL, "SBB E", 1, ALL, 4},
+	/*9C*/	{register_file + H, NULL, NULL, "SBB H", 1, ALL, 4},
+		{register_file + L, NULL, NULL, "SBB L", 1, ALL, 4},
+	/*9E*/	{NULL, NULL, NULL, "SBB M", 1, ALL, 7},
+		{register_file + A, NULL, NULL, "SBB A", 1, ALL, 4},
+	/*A0*/	{register_file + B, NULL, NULL, "ANA B", 1, ALL, 4},
+		{register_file + C, NULL, NULL, "ANA C", 1, ALL, 4},
+	/*A2*/	{register_file + D, NULL, NULL, "ANA D", 1, ALL, 4},
+		{register_file + E, NULL, NULL, "ANA E", 1, ALL, 4},
+	/*A4*/	{register_file + H, NULL, NULL, "ANA H", 1, ALL, 4},
+		{register_file + L, NULL, NULL, "ANA L", 1, ALL, 4},
+	/*A6*/	{NULL, NULL, NULL, "ANA M", 1, ALL, 7},
+		{register_file + A, NULL, NULL, "ANA A", 1, ALL, 4},
+	/*A8*/	{register_file + B, NULL, NULL, "XRA B", 1, ALL, 4},
+		{register_file + C, NULL, NULL, "XRA C", 1, ALL, 4},
+	/*AA*/	{register_file + D, NULL, NULL, "XRA D", 1, ALL, 4},
+		{register_file + E, NULL, NULL, "XRA E", 1, ALL, 4},
+	/*AC*/	{register_file + H, NULL, NULL, "XRA H", 1, ALL, 4},
+		{register_file + L, NULL, NULL, "XRA L", 1, ALL, 4},
+	/*AE*/	{NULL, NULL, NULL, "XRA M", 1, ALL, 7},
+		{register_file + A, NULL, NULL, "XRA A", 1, ALL, 4},
+	/*B0*/	{register_file + B, NULL, NULL, "ORA B", 1, ALL, 4},
+		{register_file + C, NULL, NULL, "ORA C", 1, ALL, 4},
+	/*B2*/	{register_file + D, NULL, NULL, "ORA D", 1, ALL, 4},
+		{register_file + E, NULL, NULL, "ORA E", 1, ALL, 4},
+	/*B4*/	{register_file + H, NULL, NULL, "ORA H", 1, ALL, 4},
+		{register_file + L, NULL, NULL, "ORA L", 1, ALL, 4},
+	/*B6*/	{NULL, NULL, NULL, "ORA M", 1, ALL, 7},
+		{register_file + A, NULL, NULL, "ORA A", 1, ALL, 4},
+	/*B8*/	{register_file + B, NULL, NULL, "CMP B", 1, ALL, 4},
+		{register_file + C, NULL, NULL, "CMP C", 1, ALL, 4},
+	/*BA*/	{register_file + D, NULL, NULL, "CMP D", 1, ALL, 4},
+		{register_file + E, NULL, NULL, "CMP E", 1, ALL, 4},
+	/*BC*/	{register_file + H, NULL, NULL, "CMP H", 1, ALL, 4},
+		{register_file + L, NULL, NULL, "CMP L", 1, ALL, 4},
+	/*BE*/	{NULL, NULL, NULL, "CMP M", 1, ALL, 7},
+		{register_file + A, NULL, NULL, "CMP A", 1, ALL, 4},
+	/*C0*/	{NULL, NULL, NULL, "RNZ", 1, NONE, 0xFF},
+		{NULL, NULL, ((uint16_t *)register_file) + B_PAIR, "POP B", 1, NONE, 10},
+	/*C2*/	{NULL, NULL, NULL, "JNZ ADR", 3, NONE, 10},
+		{NULL, NULL, NULL, "JMP ADR", 3, NONE, 10},
+	/*C4*/	{NULL, NULL, NULL, "CNZ ADR", 3, NONE, 0xFF},
+		{NULL, NULL, ((uint16_t *)register_file) + B_PAIR, "PUSH B", 1, NONE, 11},
+	/*C6*/	{NULL, NULL, NULL, "ADI D8", 2, ALL, 7},
+		{NULL, NULL, NULL, "RST 0", 1, NONE, 11},
+	/*C8*/	{NULL, NULL, NULL, "RZ", 1, NONE, 0xFF},
+		{NULL, NULL, NULL, "RET", 1, NONE, 10},
+	/*CA*/	{NULL, NULL, NULL, "JZ ADR", 3, NONE, 10},
+		{NULL, NULL, NULL, "NOP", 1, NONE, 4},
+	/*CC*/	{NULL, NULL, NULL, "CZ ADR", 3, NONE, 0xFF},
+		{NULL, NULL, NULL, "CALL ADR", 3, NONE, 17},
+	/*CE*/	{NULL, NULL, NULL, "ACI D8", 2, ALL, 7},
+		{NULL, NULL, NULL, "RST 1", 1, NONE, 11},
+	/*D0*/	{NULL, NULL, NULL, "RNC", 1, NONE, 0xFF},
+		{NULL, NULL, ((uint16_t *)register_file) + D_PAIR, "POP D", 1, NONE, 10},
+	/*D2*/	{NULL, NULL, NULL, "JNC ADR", 3, NONE, 10},
+		{NULL, NULL, NULL, "OUT D8", 2, NONE, 10},
+	/*D4*/	{NULL, NULL, NULL, "CNC ADR", 3, NONE, 0xFF},
+		{NULL, NULL, ((uint16_t *)register_file) + D_PAIR, "PUSH D", 1, NONE, 11},
+	/*D6*/	{NULL, NULL, NULL, "SUI D8", 2, ALL, 7},
+		{NULL, NULL, NULL, "RST 2", 1, NONE, 11},
+	/*D8*/	{NULL, NULL, NULL, "RC", 1, NONE, 0xFF},
+		{NULL, NULL, NULL, "NOP", 1, NONE, 4},
+	/*DA*/	{NULL, NULL, NULL, "JC ADR", 3, NONE, 10},
+		{NULL, NULL, NULL, "IN D8", 2, NONE, 10},
+	/*DC*/	{NULL, NULL, NULL, "CC ADR", 3, NONE, 0xFF},
+		{NULL, NULL, NULL, "NOP", 1, NONE, 4},
+	/*DE*/	{NULL, NULL, NULL, "SBI D8", 2, ALL, 7},
+		{NULL, NULL, NULL, "RST 3", 1, NONE, 11},
+	/*E0*/	{NULL, NULL, NULL, "RPO", 1, NONE, 0xFF},
+		{NULL, NULL, ((uint16_t *)register_file) + H_PAIR, "POP H", 1, NONE, 10},
+	/*E2*/	{NULL, NULL, NULL, "JPO ADR", 3, NONE, 10},
+		{NULL, NULL, NULL, "XTHL", 1, NONE, 18},
+	/*E4*/	{NULL, NULL, NULL, "CPO ADR", 3, NONE, 0xFF},
+		{NULL, NULL, ((uint16_t *)register_file) + H_PAIR, "PUSH H", 1, NONE, 11},
+	/*E6*/	{NULL, NULL, NULL, "ANI D8", 2, ALL, 7},
+		{NULL, NULL, NULL, "RST 4", 1, NONE, 11},
+	/*E8*/	{NULL, NULL, NULL, "RPE", 1, NONE, 0xFF},
+		{NULL, NULL, NULL, "PCHL", 1, NONE, 5},
+	/*EA*/	{NULL, NULL, NULL, "JPE ADR", 3, NONE, 10},
+		{NULL, NULL, NULL, "XCHG", 1, NONE, 4},
+	/*EC*/	{NULL, NULL, NULL, "CPE ADR", 3, NONE, 0xFF},
+		{NULL, NULL, NULL, "NOP", 1, NONE, 4},
+	/*EE*/	{NULL, NULL, NULL, "XRI D8", 2, ALL, 7},
+		{NULL, NULL, NULL, "RST 5", 1, NONE, 11},
+	/*F0*/	{NULL, NULL, NULL, "RP", 1, NONE, 0xFF},
+		{NULL, NULL, ((uint16_t *)register_file) + PSW, "POP PSW", 1, NONE, 10},
+	/*F2*/	{NULL, NULL, NULL, "JP ADR", 3, NONE, 10},
+		{NULL, NULL, NULL, "DI", 1, NONE, 4},
+	/*F4*/	{NULL, NULL, NULL, "CP ADR", 3, NONE, 0xFF},
+		{NULL, NULL, ((uint16_t *)register_file) + PSW, "PUSH PSW", 1, NONE, 11},
+	/*F6*/	{NULL, NULL, NULL, "ORI D8", 2, ALL, 7},
+		{NULL, NULL, NULL, "RST 6", 1, NONE, 11},
+	/*F8*/	{NULL, NULL, NULL, "RM", 1, NONE, 0xFF},
+		{NULL, NULL, NULL, "SPHL", 1, NONE, 5},
+	/*FA*/	{NULL, NULL, NULL, "JM ADR", 3, NONE, 10},
+		{NULL, NULL, NULL, "EI", 1, NONE, 4},
+	/*FC*/	{NULL, NULL, NULL, "CM ADR", 3, NONE, 0xFF},
+		{NULL, NULL, NULL, "NOP", 1, NONE, 4},
+	/*FE*/	{NULL, NULL, NULL, "CPI D8", 2, ALL, 7},
+		{NULL, NULL, NULL, "RST 7", 1, NONE, 11}	
 };
 
 //Instruction-Emulating Functions
-//Data Transfer
-//Move contents of source register to destination register
-void MovRegister(uint8_t *destination_register, uint8_t *source_register, uint8_t select, uint16_t data)
+
+static inline void AddTime(uint8_t duration_of_instruction)
 {
-	*destination_register = *source_register;	
+	//what to do for instructions with 2 timings
+
+	time += duration_of_instruction;
 }
 
-//Move to memory
-void MovMemory(uint8_t *destination, uint8_t *source, uint8_t source_is_memory)
+static inline void OutputToDebugTerminal(char *instruction_name)
 {
-	uint16_t address;		
+	printf("%s\n", instruction_name);
+}
 
-	if(source_is_memory)
-	{
-		address = (source[0] << 8) + source[1];
+//Data Transfer
+//Move contents of source register to destination register (0x40 to 0x7F excluding 0x46, 0x4E, 0x56, 0x5E, 0x66, 0x6E, 0x70-0x77)
+void MovRegister(data *input)
+{
+	uint8_t *destination_register = input -> register_2, 
+		*source_register = input -> register_1;
 		
-		destination[0] = memory[address];
-		
-		return;
-	}
+	*destination_register = *source_register;		
+}
 
-	address = (destination[0] << 8) + destination[1];
+//Move to memory (0x70-0x77 excluding 0x76)
+void MovToMemory(data *input)
+{
+	uint8_t *source = input -> register_1;
+	uint16_t address = h_pair[0];		
 	
 	memory[address] = source[0];
 }
 
-//Move to memory immediate
-void Mvi(uint8_t *destination, uint8_t destination_is_memory)
-{
-	uint16_t address;	
+//Move from memory (0x46, 0x4E, 0x56, 0x5E, 0x66, 0x6E, 0x7E)
+void MovFromMemory(data *input)
+{ 
+	uint8_t *destination = input -> register_2;
+	uint16_t address = h_pair[0];
+	
+	destination[0] = memory[address];	
+}
 
-	if(destination_is_memory)
+//Move immediate value to register or memory (0x06, 0x0E, 0x16, 0x1E, 0x26, 0x2E, 0x36, 0x3E) 
+void Mvi(data *input)
+{
+	uint16_t address = h_pair[0];
+	uint8_t *destination_is_register = input -> register_2;	
+
+	if(destination_is_register)
 	{
-		address = (destination[0] << 8) + destination[1];
-		
-		memory[address] = memory[pc];
-		pc += 1;
+		destination_is_register[0] = memory[pc];
+		pc += ((input -> size) - 1);
 		
 		return;	
 	}
 
-	destination[0] = memory[pc];
-	pc += 1;
+	memory[address] = memory[pc];
+	pc += ((input -> size) - 1);
 }
 
-//Load register pair immediate
-//void Lxi(uint8_t *register_pair)
+//Load immediate value to register pair (0x01, 0x11, 0x21, 0x31)
 void Lxi(data *input)
 {
 	uint8_t high_byte, low_byte;
-	uint16_t address;
+	uint16_t *destination_register_pair = input -> register_pair;
 
 	low_byte = memory[pc + 0];
 	high_byte = memory[pc + 1];
 	pc += 2;
 
-	address = (high_byte << 8) + low_byte;
-	
-	input->register_pair_1[1] = memory[address + 0];
-	input->register_pair_1[0] = memory[address + 1];
+	destination_register_pair[0] = (high_byte << 8) + low_byte;
 }
 
 //Store/Load Accumulator directly
@@ -786,8 +793,9 @@ static instruction instruction_set[1] =
 
 int main(int argv, char *argc[])
 {
+	time = 0;
 	memory = (uint8_t*)malloc(MEMORY_SIZE * sizeof(uint8_t));
-	instruction s = instruction_set[0];
+	
 	while(1)
 	{
 		instruction_register = memory[pc];
@@ -799,6 +807,7 @@ int main(int argv, char *argc[])
 	}
 
 	free(memory);			
+	memory = NULL;
 
 	return 0;
 }
