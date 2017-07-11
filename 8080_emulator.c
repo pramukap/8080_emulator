@@ -98,6 +98,8 @@ static uint32_t time;
 //SIGNALS - WR'(0) | DBIN(O) | INTE(O) | INT(I) | HOLD ACK(O) | HOLD(I) | WAIT (0) | READY(I) | SYNC(O) | RESET(I) 
 //BIT     - 0      | 1       | 2       | 3      | 4           | 5       | 6        | 7        | 8       | 9
 static uint16_t control;
+static uint8_t interrupt_enable;
+static uint8_t halt_enable;
 //---
 
 //USER INTERFACE---
@@ -189,7 +191,7 @@ static data instruction_set_data[256] =
 		{NULL, NULL, NULL, "STC", 1, CARRY, 4},
 	/*38*/	{NULL, NULL, NULL, "NOP", 1, NONE, 4},
 		{NULL, NULL, &sp, "DAD SP", 1, CARRY, 10},
-	/*3A*/	{NULL, NULL, NULL, "LDA adr", 3, NONE, 13},
+	/*3A*/	{NULL, NULL, NULL, "LDA ADR", 3, NONE, 13},
 		{NULL, NULL, &sp, "DCX SP", 1, NONE, 5},
 	/*3C*/	{register_file + A, NULL, NULL, "INR A", 1, ALL_EXCEPT_CARRY, 5},
 		{register_file + A, NULL, NULL, "DCR A", 1, ALL_EXCEPT_CARRY, 5},
@@ -405,55 +407,55 @@ static inline void OutputToDebugTerminal(char *instruction_name)
 
 //Data Transfer
 //Move contents of source register to destination register (0x40 to 0x7F excluding 0x46, 0x4E, 0x56, 0x5E, 0x66, 0x6E, 0x70-0x77)
-void MovRegister(data *input)
+void MovRegister(data *in)
 {
-	uint8_t *destination_register = input -> register_2, 
-		*source_register = input -> register_1;
+	uint8_t *destination_register = in -> register_2, 
+		*source_register = in -> register_1;
 		
 	*destination_register = *source_register;		
 }
 
 //Move to memory (0x70-0x77 excluding 0x76)
-void MovToMemory(data *input)
+void MovToMemory(data *in)
 {
-	uint8_t *source = input -> register_1;
+	uint8_t *source = in -> register_1;
 	uint16_t address = h_pair[0];		
 	
 	memory[address] = source[0];
 }
 
 //Move from memory (0x46, 0x4E, 0x56, 0x5E, 0x66, 0x6E, 0x7E)
-void MovFromMemory(data *input)
+void MovFromMemory(data *in)
 { 
-	uint8_t *destination = input -> register_2;
+	uint8_t *destination = in -> register_2;
 	uint16_t address = h_pair[0];
 	
 	destination[0] = memory[address];	
 }
 
 //Move immediate value to register or memory (0x06, 0x0E, 0x16, 0x1E, 0x26, 0x2E, 0x36, 0x3E) 
-void Mvi(data *input)
+void Mvi(data *in)
 {
+	uint8_t *destination_is_register = in -> register_2;	
 	uint16_t address = h_pair[0];
-	uint8_t *destination_is_register = input -> register_2;	
 
 	if(destination_is_register)
 	{
 		destination_is_register[0] = memory[pc];
-		pc += ((input -> size) - 1);
+		pc += ((in -> size) - 1);
 		
 		return;	
 	}
 
 	memory[address] = memory[pc];
-	pc += ((input -> size) - 1);
+	pc += ((in -> size) - 1);
 }
 
 //Load immediate value to register pair (0x01, 0x11, 0x21, 0x31)
-void Lxi(data *input)
+void Lxi(data *in)
 {
 	uint8_t high_byte, low_byte;
-	uint16_t *destination_register_pair = input -> register_pair;
+	uint16_t *destination_register_pair = in -> register_pair;
 
 	low_byte = memory[pc + 0];
 	high_byte = memory[pc + 1];
@@ -462,8 +464,8 @@ void Lxi(data *input)
 	destination_register_pair[0] = (high_byte << 8) + low_byte;
 }
 
-//Store/Load Accumulator directly
-void Stlda(uint8_t loading_from_memory)
+//Load Accumulator directly (0x3A)
+void Lda(data *in)
 {
 	uint8_t high_byte, low_byte;
 	uint16_t address;
@@ -474,17 +476,26 @@ void Stlda(uint8_t loading_from_memory)
 
 	address = (high_byte << 8) + low_byte;
 	
-	if(loading_from_memory)
-	{
-		a[0] = memory[address];
-		return;
-	}
+	a[0] = memory[address];
+}
 
+//Load Accumulator directly (0x32)
+void Sta(data *in)
+{
+	uint8_t high_byte, low_byte;
+	uint16_t address;
+	
+	low_byte = memory[pc + 0];
+	high_byte = memory[pc + 1];
+	pc += 2;	
+
+	address = (high_byte << 8) + low_byte;
+	
 	memory[address] = a[0];
 }
 
-//Store/Load register pair H directly
-void Slhld(uint8_t loading_from_memory)
+//Load register pair H directly (0x2A)
+void Lhld(data *in)
 {
 	uint8_t high_byte, low_byte;
 	uint16_t address;
@@ -495,162 +506,215 @@ void Slhld(uint8_t loading_from_memory)
 	
 	address = (high_byte << 8) + low_byte;
 	
-	if(loading_from_memory)
-	{
-		l[0] = memory[address + 0];
-		h[0] = memory[address + 1];
-		return;
-	}
+	l[0] = memory[address + 0];
+	h[0] = memory[address + 1];
+}
 
+//Store register pair H directly (0x22)
+void Shld(data *in)
+{
+	uint8_t high_byte, low_byte;
+	uint16_t address;
+	
+	low_byte = memory[pc + 0];
+	high_byte = memory[pc + 1];
+	pc += 2;
+	
+	address = (high_byte << 8) + low_byte;
+	
 	memory[address + 0] = l[0];
 	memory[address + 1] = h[0];
 }
 
-//Store/Load accumulator indirect
-void Stldax(uint16_t *register_pair, uint8_t loading_from_memory)
+//Load accumulator indirect (0x0A, 0x1A)
+void Ldax(data *in)
 {
-	if(loading_from_memory)
-	{
-		a[0] = memory[register_pair[0]];
-		return;
-	}
+	uint16_t address = (in -> register_pair)[0];	
 
-	memory[register_pair[0]] = a[0];
+	a[0] = memory[address];
 }
 
-//Exchange contents of register pair H with contents of register pair D
-void Xchg()
-{
-	h[0] = h[0] ^ d[0];
-	d[0] = d[0] ^ h[0];
-	h[0] = h[0] ^ d[0];
 
-	l[0] = l[0] ^ e[0];
-	e[0] = e[0] ^ l[0];
-	l[0] = l[0] ^ e[0];
+//Store accumulator indirect (0x02, 0x12)
+void Stax(data *in)
+{
+	uint16_t address = (in -> register_pair)[0];
+	
+	memory[address] = a[0];
+}
+
+//Exchange contents of register pair H with contents of register pair D (0xEB)
+void Xchg(data *in)
+{
+	uint16_t temporary_register_pair = h_pair[0];
+
+	h_pair[0] = d_pair[0];
+	d_pair[0] = temporary_register_pair;
 }
 
 //Arithmetic
-//Subtract/Add contents of register to accumulator
-void SubAddRegister(uint8_t *source_register, uint8_t adding)
-{
-	if(adding)
-	{
-		a[0] += source_register[0];
-		return;
-	}
 
-	a[0] -= source_register[0];
+//Add contents of register to accumulator
+void AddRegister(data *in)
+{
+	uint8_t addend = (in -> register_1)[0];
+
+	a[0] += addend; 
 }
 
-//Subtract/Add contents of memory to accumulator
-void SubAddMemory(uint8_t adding)
+//Subtract contents of register from accumulator
+void SubRegister(data *in)
 {
-	if(adding)
-	{
-		a[0] += memory[h_pair[0]];
-		return;
-	}
+	uint8_t subtrahend = (in -> register_1)[0];
 
-	a[0] -= memory[h_pair[0]]; 
+	a[0] -= subtrahend;
 }
 
-//Subtract/Add immediate
-void SuiAdi(uint8_t adding)
+//Add contents of memory to accumulator
+void AddMemory(data *in)
 {
-	if(adding)
-	{
-		a[0] += memory[pc + 0];
-		pc += 1;
-		return;
-	}
+	uint8_t addend = memory[h_pair[0]];
 
-	a[0] -= memory[pc + 0];
+	a[0] += addend;
+}
+
+//Subtract contents of memory from accumulator
+void SubAddMemory(data *in)
+{	
+	uint8_t subtrahend = memory[h_pair[0]];	
+
+	a[0] -= subtrahend;
+}
+
+//Add immediate
+void Adi(data *in)
+{
+	uint8_t addend = memory[pc + 0];
+
+	a[0] += addend;
 	pc += 1;
 }
 
-//Subtract/Add register with borrow/carry
-void SbbAdcRegister(uint8_t *source_register, uint8_t adding)
+//Subtract immediate
+void Sui(data *in)
 {
-	if(adding)
-	{
-		a[0] += source_register[0] + (status[0] & 0x01);	//status bit 0 is the carry flag
-		return; 
-	}
+	uint8_t subtrahend = memory[pc+0];
 
-	a[0] -= (source_register[0] + (status[0] & 0x01));
+	a[0] -= subtrahend;
+	pc += 1;
 }
 
-//Subtract/Add memory with borrow/carry
+//Add register with carry
+void AdcRegister(data *in)
+{
+	uint8_t addend = (in -> register_1)[0];
+
+
+	a[0] += addend + (status[0] & 0x01);	//status bit 0 is the carry/borrow flag
+}
+
+//Subtract register with borrow
+void SbbRegister(data *in)
+{
+	uint8_t subtrahend = (in -> register_1)[0];
+
+	a[0] -= (subtrahend + (status[0] & 0x01));
+}
+
+//Add memory with carry
+void AdcMemory(data *in)
+{
+	uint8_t addend = memory[h_pair[0]];
+
+
+	a[0] += addend + (status[0] & 0x01);
+}
+
+
+//Subtract memory with borrow
 void SbbAdcMemory(uint8_t *addend_memory, uint8_t adding)
 {
-	if(adding)
-	{
-		a[0] += memory[h_pair[0]] + (status[0] & 0x01);		//status bit 0 is the carry flag
-		return;
-	}
+	uint8_t subtrahend = memory[h_pair[0]];
 
-	a[0] -= (memory[h_pair[0]] + (status[0] & 0x01)); 
+	a[0] -= (subtrahend + (status[0] & 0x01));
 }
 
-//Subtract/Add immediate with carry
-void SbiAci(uint8_t adding)
+//Add immediate with carry
+void Aci(data *in)
 {
-	if(adding)
-	{
-		a[0] += memory[pc + 0] + (status[0] & 0x01);		//status bit 0 is the carry flag
-		pc += 1;
-		return;
-	}
-
-	a[0] -= (memory[pc + 0] + (status[0] & 0x01));
+	uint8_t addend = memory[pc + 0];
+	
+	a[0] += addend + (status[0] & 0x01);
 	pc += 1;
 }
 
-//Decrement/Increment register
-void DcrInrRegister(uint8_t *target_register, uint8_t incrementing)
+//Subtract immediate with borrow
+void Sbi(data *in)
 {
-	if(incrementing)
-	{
-		target_register[0] += 1;
-		return;
-	}
+	uint8_t subtrahend = memory[pc + 0];
 
-	target_register[0] -= 1;
+	a[0] -= (subtrahend + (status[0] & 0x01));
+	pc += 1;
 }
 
-//Decrement/Increment memory
-void DcrInrMemory(uint8_t incrementing)
+//Increment register
+void InrRegister(data *in)
 {
-	if(incrementing)
-	{
-		memory[h_pair[0]] += 1; 
-		return;
-	}
+	uint8_t *increment_register = (in -> register_1);
 
-	memory[h_pair[0]] -= 1;
+	increment_register[0] += 1;
 }
 
-//Decrement/Increment register pair
-void DcxInx(uint16_t *register_pair, uint8_t incrementing)
+//Decrement register
+void DcrRegister(data *in)
 {
-	if(incrementing)
-	{
-		register_pair[0] += 1;
-		return;
-	}
+	uint8_t *decrement_register = (in -> register_1);	
 
-	register_pair[0] -= 1;
+	decrement_register[0] -= 1;
+}
+
+//Increment memory
+void InrMemory(data *in)
+{
+	uint16_t address = h_pair[0];
+
+	memory[address] += 1;
+}
+
+//Decrement memory
+void DcrMemory(data *in)
+{
+	uint16_t address = h_pair[0];
+
+	memory[address] -= 1;
+}
+
+//Increment register pair
+void Inx(data *in)
+{
+	uint16_t *increment_register_pair = in -> register_pair;
+
+	increment_register_pair[0] += 1;
+}
+
+//Decrement register pair
+void Dcx(data *in)
+{
+	uint16_t *decrement_register_pair = in -> register_pair;
+
+	decrement_register_pair[0] -= 1;
 }
 
 //Add register pair to register pair H
-void Dad(uint16_t *register_pair)
+void Dad(data *in)
 {
-	h_pair[0] += register_pair[0];
+	uint16_t addend = (in -> register_pair)[0];
+
+	h_pair[0] += addend;
 }
 
 //Decimal Adjust Accumulator
-void Daa()
+void Daa(data *in)
 {
 	if((a[0] & 0x0F) > 9 || (status[0] & 0x02))		//status bit 1 is the auxiliary carry flag
 	{
@@ -665,85 +729,101 @@ void Daa()
 
 //Logic
 //AND register
-void AnaRegister(uint8_t *source_register)
+void AnaRegister(data *in)
 {
-	a[0] &= source_register[0];
+	uint8_t and_value = (in -> register_1)[0];
+
+	a[0] &= and_value;
 }
 
 //AND memory
-void AnaMemory()
+void AnaMemory(data *in)
 {
-	a[0] &= memory[h_pair[0]];
+	uint16_t address = h_pair[0];	
+
+	a[0] &= memory[address];
 }
 
 //AND immediate
-void Ani()
+void Ani(data *in)
 {
 	a[0] &= memory[pc + 0];
 	pc += 1;
 }
 
 //XOR register
-void XraRegister(uint8_t *source_register)
+void XraRegister(data *in)
 {
-	a[0] ^= source_register[0];
+	uint8_t xor_value = (in -> register_1)[0];
+
+	a[0] ^= xor_value;
 }
 
 //XOR memory
-void XraMemory()
+void XraMemory(data *in)
 {
-	a[0] ^= memory[h_pair[0]];
+	uint16_t address = h_pair[0];
+
+	a[0] ^= memory[address];
 }
 
 //XOR immediate
-void Xri()
+void Xri(data *in)
 {
 	a[0] ^= memory[pc + 0];
 	pc += 1;
 }
 
 //OR register
-void OraRegister(uint8_t *source_register)
+void OraRegister(data *in)
 {
-	a[0] |= source_register[0];
+	uint8_t or_value = (in -> register_1)[0];
+
+	a[0] |= or_value;
 }
 
 //OR memory
-void OraMemory()
+void OraMemory(data *in)
 {
-	a[0] |= memory[h_pair[0]];
+	uint16_t address = h_pair[0];
+
+	a[0] |= memory[address];
 }
 
 //OR immediate
-void Ori()
+void Ori(data *in)
 {
 	a[0] |= memory[pc + 0];
 	pc += 1;
 }
 
 //Compare register
-void CmpRegister(uint8_t *source_register)
+void CmpRegister(data *in)
 {
-	if(a[0] == source_register[0])
+	uint8_t compare_value = (in -> register_1)[0];
+
+	if(a[0] == compare_value)
 	{
 		status[0] |= 0x08;	
 	}
 
-	if(a[0] < source_register[0])
+	if(a[0] < compare_value)
 	{
 		status[0] |= 0x01;
 	}
 }
 
 //Compare memory
-void CmpMemory()
+void CmpMemory(data *in)
 {
-	if(a[0] == memory[h_pair[0]])
+	uint16_t address= h_pair[0];
+
+	if(a[0] == memory[address])
 	{
 		status[0] |= 0x08;	
 	}
 
-	if(a[0] < memory[h_pair[0]])
+	if(a[0] < memory[address])
 	{
 		status[0] |= 0x01;
 	}
@@ -766,23 +846,581 @@ void Cpi(data *input)
 }
 
 //Rotate left
+void Rlc(data *in)
+{
+	uint8_t bit_7 = (a[0] & 0x80) >> 7;
+
+	a[0] = (a[0] << 1) + bit_7;
+}
 
 //Rotate right
+void Rrc(data *in)
+{
+	uint8_t bit_0 = a[0] & 0x01;
+	
+	a[0] = (a[0] >> 1) + (bit_0 << 7);
+}
 
 //Rotate left through carry
+void Ral(data *in)
+{
+	uint8_t new_value_of_carry = (a[0] * 0x80) >> 7;
+
+	a[0] = (a[0] << 1) + (status[0] & 0x01);			//pass current carry flag value to bit 0 of accumulator
+	status[0] = (status[0] & ~0x01) + new_value_of_carry;		//pass bit 7 of accumulator to carry flag
+}
 
 //Rotate right through carry
+void Rar(data *in)
+{
+	uint8_t new_value_of_carry = a[0] & 0x01;
+
+	a[0] = (a[0] >> 1) + ((status[0] & 0x01) << 7);
+	status[0] = (status[0] & ~0x01) + new_value_of_carry;
+}
 
 //Complement accumulator
+void Cma(data *in)
+{
+	a[0] = ~a[0];
+}
 
 //Complement carry
-
+void Cmc(data *in)
+{
+	status[0] ^= 0x01;
+}
 //Set carry
+void Stc(data *in)
+{
+	status[0] |= 0x01;
+}
 
 //Branch
+//Unconditional jump
+void Jmp(data *in)
+{
+	uint8_t high_byte = memory[pc + 1],
+		low_byte = memory[pc + 0];
+	
+	uint16_t address = (high_byte << 8) + low_byte;
+
+	pc = address;
+}
+
+//Conditional jumps
+void Jnz(data *in)
+{
+	uint8_t high_byte = memory[pc + 1],
+		low_byte = memory[pc + 0];
+	
+	uint16_t address = (high_byte << 8) + low_byte;
+
+	if(!(status[0] & 0x08))
+	{
+		pc = address;
+		return;
+	}
+
+	pc += 2;
+}
+
+void Jz(data *in)
+{
+	uint8_t high_byte = memory[pc + 1],
+		low_byte = memory[pc + 0];
+	
+	uint16_t address = (high_byte << 8) + low_byte;
+
+	if(status[0] & 0x08)
+	{
+		pc = address;
+		return;
+	}
+
+	pc += 2;
+}
+
+void Jnc(data *in)
+{
+	uint8_t high_byte = memory[pc + 1],
+		low_byte = memory[pc + 0];
+	
+	uint16_t address = (high_byte << 8) + low_byte;
+
+	if(!(status[0] & 0x01))
+	{
+		pc = address;
+		return;
+	}
+
+	pc += 2;
+}
+
+void Jc(data *in)
+{
+	uint8_t high_byte = memory[pc + 1],
+		low_byte = memory[pc + 0];
+	
+	uint16_t address = (high_byte << 8) + low_byte;
+
+	if(status[0] & 0x01)
+	{
+		pc = address;
+		return;
+	}
+
+	pc += 2;
+}
+
+void Jpo(data *in)
+{
+	uint8_t high_byte = memory[pc + 1],
+		low_byte = memory[pc + 0];
+
+	uint16_t address = (high_byte << 8) + low_byte;
+
+	if(!(status[0] & 0x10))
+	{
+		pc = address;
+		return;
+	}
+
+	pc += 2;
+}
+
+void Jpe(data *in)
+{
+	uint8_t high_byte = memory[pc + 1],
+		low_byte = memory[pc + 0];
+
+	uint16_t address = (high_byte << 8) + low_byte;
+
+	if(status[0] & 0x10)
+	{
+		pc = address;
+		return;
+	}
+
+	pc += 2;
+}
+
+void Jp(data *in)
+{
+	uint8_t high_byte = memory[pc + 1],
+		low_byte = memory[pc + 0];
+
+	uint16_t address = (high_byte << 8) + low_byte;
+
+	if(!(status[0] & 0x04))
+	{
+		pc = address;
+		return;
+	}
+
+	pc += 2;
+}
+
+void Jm(data *in)
+{
+	uint8_t high_byte = memory[pc + 1],
+		low_byte = memory[pc + 0];
+	
+	uint16_t address = (high_byte << 8) + low_byte;
+	
+	if(status[0] & 0x04)
+	{
+		pc = address;
+		return;
+	}
+	
+	pc += 2;
+}
+
+//Unconditional call
+void Call(data *in)
+{
+	uint8_t high_byte = memory[pc + 1],
+		low_byte = memory[pc + 0];
+
+	uint16_t address = (high_byte << 8) + low_byte;
+	
+	pc += 2;	
+	sp -= 2;		
+	memory[sp] = pc;
+	pc = address;
+}
+
+//Conditional calls
+void Cnz(data *in)
+{
+	uint8_t high_byte = memory[pc + 1],
+		low_byte = memory[pc + 0];
+
+	uint16_t address = (high_byte << 8) + low_byte;
+	
+	if(!(status[0] & 0x08))
+	{
+		pc += 2;	
+		sp -= 2;		
+		memory[sp] = pc;
+		pc = address;
+	}
+}
+
+void Cz(data *in)
+{
+	uint8_t high_byte = memory[pc + 1],
+		low_byte = memory[pc + 0];
+
+	uint16_t address = (high_byte << 8) + low_byte;
+	
+	if(status[0] & 0x08)
+	{
+		pc += 2;	
+		sp -= 2;		
+		memory[sp] = pc;
+		pc = address;
+	}
+}
+
+void Cnc(data *in)
+{
+	uint8_t high_byte = memory[pc + 1],
+		low_byte = memory[pc + 0];
+
+	uint16_t address = (high_byte << 8) + low_byte;
+	
+	if(!(status[0] & 0x01))
+	{
+		pc += 2;	
+		sp -= 2;		
+		memory[sp] = pc;
+		pc = address;
+	}
+}
+
+void Cc(data *in)
+{
+	uint8_t high_byte = memory[pc + 1],
+		low_byte = memory[pc + 0];
+
+	uint16_t address = (high_byte << 8) + low_byte;
+	
+	if(status[0] & 0x01)
+	{
+		pc += 2;	
+		sp -= 2;		
+		memory[sp] = pc;
+		pc = address;
+	}
+}
+
+void Cpo(data *in)
+{
+	uint8_t high_byte = memory[pc + 1],
+		low_byte = memory[pc + 0];
+
+	uint16_t address = (high_byte << 8) + low_byte;
+	
+	if(!(status[0] & 0x10))
+	{
+		pc += 2;	
+		sp -= 2;		
+		memory[sp] = pc;
+		pc = address;
+	}
+}
+
+void Cpe(data *in)
+{
+	uint8_t high_byte = memory[pc + 1],
+		low_byte = memory[pc + 0];
+
+	uint16_t address = (high_byte << 8) + low_byte;
+	
+	if(status[0] & 0x10)
+	{
+		pc += 2;	
+		sp -= 2;		
+		memory[sp] = pc;
+		pc = address;
+	}
+}
+
+void Cp(data *in)
+{
+	uint8_t high_byte = memory[pc + 1],
+		low_byte = memory[pc + 0];
+
+	uint16_t address = (high_byte << 8) + low_byte;
+	
+	if(!(status[0] & 0x04))
+	{
+		pc += 2;	
+		sp -= 2;		
+		memory[sp] = pc;
+		pc = address;
+	}
+}
+
+void Cm(data *in)
+{
+	uint8_t high_byte = memory[pc + 1],
+		low_byte = memory[pc + 0];
+
+	uint16_t address = (high_byte << 8) + low_byte;
+	
+	if(status[0] & 0x04)
+	{
+		pc += 2;	
+		sp -= 2;		
+		memory[sp] = pc;
+		pc = address;
+	}
+}
+
+//Unconditional return
+void Ret(data *in)
+{
+	uint8_t high_byte = memory[sp + 1],
+		low_byte = memory[sp + 0];
+
+	uint16_t address = (high_byte << 8) + low_byte;
+	
+	sp += 2;
+	pc = address;
+}
+
+//Conditional returns
+void Rnz(data *in)
+{
+	uint8_t high_byte = memory[sp + 1],
+		low_byte = memory[sp + 0];
+
+	uint16_t address = (high_byte << 8) + low_byte;
+	
+	if(!(status[0] & 0x08))
+	{
+		sp += 2;
+		pc = address;
+	}
+}
+
+void Rz(data *in)
+{
+	uint8_t high_byte = memory[sp + 1],
+		low_byte = memory[sp + 0];
+
+	uint16_t address = (high_byte << 8) + low_byte;
+	
+	if(status[0] & 0x08)
+	{
+		sp += 2;
+		pc = address;
+	}
+}
+
+void Rnc(data *in)
+{
+	uint8_t high_byte = memory[sp + 1],
+		low_byte = memory[sp + 0];
+
+	uint16_t address = (high_byte << 8) + low_byte;
+	
+	if(!(status[0] & 0x01))
+	{
+		sp += 2;
+		pc = address;	
+	}
+}
+
+void Rc(data *in)
+{
+	uint8_t high_byte = memory[sp + 1],
+		low_byte = memory[sp + 0];
+
+	uint16_t address = (high_byte << 8) + low_byte;
+	
+	if(status[0] & 0x01)
+	{
+		sp += 2;
+		pc = address;
+	}
+}
+
+void Rpo(data *in)
+{
+	uint8_t high_byte = memory[sp + 1],
+		low_byte = memory[sp + 0];
+
+	uint16_t address = (high_byte << 8) + low_byte;
+	
+	if(!(status[0] & 0x10))
+	{
+		sp += 2;
+		pc = address;
+	}
+}
+
+void Rpe(data *in)
+{
+	uint8_t high_byte = memory[sp + 1],
+		low_byte = memory[sp + 0];
+
+	uint16_t address = (high_byte << 8) + low_byte;
+	
+	if(status[0] & 0x10)
+	{
+		sp += 2;
+		pc = address;
+	}
+}
+
+void Rp(data *in)
+{
+	uint8_t high_byte = memory[sp + 1],
+		low_byte = memory[sp + 0];
+
+	uint16_t address = (high_byte << 8) + low_byte;
+	
+	if(!(status[0] & 0x04))
+	{
+		sp += 2;
+		pc = address;
+	}
+}
+
+void Rm(data *in)
+{
+	uint8_t high_byte = memory[sp + 1],
+		low_byte = memory[sp + 0];
+
+	uint16_t address = (high_byte << 8) + low_byte;
+	
+	if(status[0] & 0x04)
+	{
+		sp += 2;
+		pc = address;
+	}
+}
+
+//Restart
+void Rst(data *in)
+{
+	uint16_t address = ((instruction_register & 0x38) >> 3) * 8;
+	
+	if(status[0] & 0x04)
+	{	
+		sp -= 2;		
+		memory[sp] = pc;
+		pc = address;
+	}
+}
+
+//Move register pair H to pc
+void Pchl(data *in)
+{
+	pc = h_pair[0];
+}
 
 //Stack, IO, Machine Control
+//Push register
+void PushRp(data *in)
+{
+	uint16_t pushed_value = (in -> register_pair)[0];
 
+	sp -= 2;
+	memory[sp] = pushed_value;
+}
+
+//Push psw
+void PushPsw(data *in)
+{
+	uint8_t pushed_status = 0;
+
+	pushed_status = ((status[0] & 0x10) >> 2) + 
+			((status[0] & 0x08) << 3) + 
+			((status[0] & 0x04) << 5) +
+			((status[0] & 0x02) << 3);	
+
+	memory[sp - 1] = a[0];
+	memory[sp - 2] = pushed_status;
+	
+	sp -= 2;
+}
+
+//Pop register
+void PopRp(data *in)
+{
+	uint16_t *destination_register_pair = (in -> register_pair);
+	
+	destination_register_pair[0] = (uint16_t)memory[sp];
+	
+	sp += 2;
+}
+
+//Pop psw
+void PopPsw(data *in)
+{
+	uint8_t popped_status = memory[sp + 0];
+
+	status[0] = 	((popped_status & 0x80) >> 5) +
+			((popped_status & 0x40) >> 3) +
+			((popped_status & 0x10) >> 3) +
+			((popped_status & 0x04) << 2);
+
+	a[0] = memory[sp + 1];
+
+	sp += 2;
+}
+
+//Exchange top two bytes on stack with register pair H
+void Xthl(data *in)
+{
+	uint8_t temporary_h_register = h[0],
+		temporary_l_register = l[0];
+
+	h_pair[0] = (uint16_t)memory[sp];
+	
+	memory[sp + 0] = temporary_l_register;
+	memory[sp + 1] = temporary_h_register;
+}
+
+//Set sp to register pair H
+void Sphl(data *in)
+{
+	sp = h_pair[0];
+}
+
+//Input
+
+
+//Output
+
+//Enable interrupts
+void Ei(data *in)
+{
+	interrupt_enable |= 0x01;
+}
+
+//Disable interrupts
+void Di(data *in)
+{
+	interrupt_enable &= ~0x01;
+}
+
+//Halt
+void Hlt(data *in)
+{
+	halt_enable |= 0x01;
+}
+
+//Nop
+void Nop(data *in)
+{
+
+}
 
 static instruction instruction_set[1] =
 {	
