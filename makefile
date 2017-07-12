@@ -18,10 +18,13 @@ TARGET = emu
 all: $(TARGET)
 
 $(TARGET): $(SRC)
-	$(CC) $(FLAGS) $(SRC) -o $(TARGET)
+	$(CC) $(FLAGS) $(SRC) -o $(TARGET) 
 
 8080_emulator.o: 8080_emulator.c
 	gcc -g -Wall -c 8080_emulator.c
+
+compile: 8080_emulator.c
+	gcc -Wall -c 8080_emulator.c 2> error.txt
 
 clean:
 	rm -rf *o

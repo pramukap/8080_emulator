@@ -26,15 +26,18 @@
 #define PSW			6
 
 #define MEMORY_SIZE		4000
+#define PORTS			256
+#define BYTE			8
 #define ALL			0b00011111
 #define NONE			0b00000000
 #define ALL_EXCEPT_CARRY	0b00011110
 #define CARRY			0b00000001
 
 //HARDWARE---
-static uint8_t *memory;
+uint8_t *memory;
+uint8_t *io;
  
-static uint8_t register_file[10];
+uint8_t register_file[10];
 
 /*
  * General Purpose Registers
@@ -139,7 +142,7 @@ static data instruction_set_data[256] =
 		{NULL, NULL, ((uint16_t *)register_file) + B_PAIR, "INX B", 1, NONE, 5},
 	/*04*/	{register_file + B, NULL, NULL, "INR B", 1, ALL_EXCEPT_CARRY, 5},
 		{register_file + B, NULL, NULL, "DCR B", 1, ALL_EXCEPT_CARRY, 5},
-	/*06*/ 	{register_file + B, NULL, NULL, "MVI B, D8", 2, NONE, 7},
+	/*06*/ 	{NULL, register_file + B, NULL, "MVI B, D8", 2, NONE, 7},
 	 	{NULL, NULL, NULL, "RLC", 1, CARRY, 4},
 	/*08*/ 	{NULL, NULL, NULL, "NOP", 1, NONE, 4},
 	 	{NULL, NULL, ((uint16_t *)register_file) + B_PAIR, "DAD B", 1, CARRY, 10},
@@ -147,7 +150,7 @@ static data instruction_set_data[256] =
 	 	{NULL, NULL, ((uint16_t *)register_file) + B_PAIR, "DCX B", 1, NONE, 5},
 	/*0C*/ 	{register_file + C, NULL, NULL, "INR C", 1, ALL_EXCEPT_CARRY, 5},
 	 	{register_file + C, NULL, NULL, "DCR C", 1, ALL_EXCEPT_CARRY, 5},
-	/*0E*/	{register_file + C, NULL, NULL, "MVI C, D8", 2, NONE, 7},
+	/*0E*/	{NULL, register_file + C, NULL, "MVI C, D8", 2, NONE, 7},
 		{NULL, NULL, NULL, "RRC", 1, CARRY, 4},
 	/*10*/	{NULL, NULL, NULL, "NOP", 1, NONE, 4},
 		{NULL, NULL, ((uint16_t *)register_file) + D_PAIR, "LXI D, D16", 3, NONE, 10},
@@ -155,7 +158,7 @@ static data instruction_set_data[256] =
 		{NULL, NULL, ((uint16_t *)register_file) + D_PAIR, "INX D", 1, NONE, 5},
 	/*14*/	{register_file + D, NULL, NULL, "INR D", 1, ALL_EXCEPT_CARRY, 5},
 		{register_file + D, NULL, NULL, "DCR D", 1, ALL_EXCEPT_CARRY, 5},
-	/*16*/	{register_file + D, NULL, NULL, "MVI D, D8", 2, NONE, 7},
+	/*16*/	{NULL, register_file + D, NULL, "MVI D, D8", 2, NONE, 7},
 		{NULL, NULL, NULL, "RAL", 1, CARRY, 4},
 	/*18*/	{NULL, NULL, NULL, "NOP", 1, NONE, 4},
 		{NULL, NULL, ((uint16_t *)register_file) + D_PAIR, "DAD D", 1, CARRY, 10},
@@ -163,7 +166,7 @@ static data instruction_set_data[256] =
 		{NULL, NULL, ((uint16_t *)register_file) + D_PAIR, "DCX D", 1, NONE, 5},
 	/*1C*/	{register_file + E, NULL, NULL, "INR E", 1, ALL_EXCEPT_CARRY, 5},
 		{register_file + E, NULL, NULL, "DCR E", 1, ALL_EXCEPT_CARRY, 5},
-	/*1E*/	{register_file + E, NULL, NULL, "MVI E, D8", 2, NONE, 7},
+	/*1E*/	{NULL, register_file + E, NULL, "MVI E, D8", 2, NONE, 7},
 		{NULL, NULL, NULL, "RAR", 1, CARRY, 4},
 	/*20*/	{NULL, NULL, NULL, "NOP", 1, NONE, 4},
 		{NULL, NULL, ((uint16_t *)register_file) + H_PAIR, "LXI H, D16", 3, NONE, 10},
@@ -171,7 +174,7 @@ static data instruction_set_data[256] =
 		{NULL, NULL, ((uint16_t *)register_file) + H_PAIR, "INX H", 1, NONE, 5},
 	/*24*/	{register_file + H, NULL, NULL, "INR H", 1, ALL_EXCEPT_CARRY, 5},
 		{register_file + H, NULL, NULL, "DCR H", 1, ALL_EXCEPT_CARRY, 5},
-	/*26*/	{register_file + H, NULL, NULL, "MVI H, D8", 2, NONE, 7},
+	/*26*/	{NULL, register_file + H, NULL, "MVI H, D8", 2, NONE, 7},
 		{NULL, NULL, NULL, "DAA", 1, NONE, 4},
 	/*28*/	{NULL, NULL, NULL, "NOP", 1, NONE, 4},
 		{NULL, NULL, ((uint16_t *)register_file) + H_PAIR, "DAD H", 1, CARRY, 10},
@@ -179,7 +182,7 @@ static data instruction_set_data[256] =
 		{NULL, NULL, ((uint16_t *)register_file) + H_PAIR, "DCX H", 1, NONE, 5},
 	/*2C*/	{register_file + L, NULL, NULL, "INR L", 1, ALL_EXCEPT_CARRY, 5},
 		{register_file + L, NULL, NULL, "DCR L", 1, ALL_EXCEPT_CARRY, 5},
-	/*2E*/	{register_file + L, NULL, NULL, "MVI L, D8", 2, NONE, 7},
+	/*2E*/	{NULL, register_file + L, NULL, "MVI L, D8", 2, NONE, 7},
 		{NULL, NULL, NULL, "CMA", 1, NONE, 4},
 	/*30*/	{NULL, NULL, NULL, "NOP", 1, NONE, 4},
 		{NULL, NULL, &sp, "LXI SP, D16", 3, NONE, 10},
@@ -195,7 +198,7 @@ static data instruction_set_data[256] =
 		{NULL, NULL, &sp, "DCX SP", 1, NONE, 5},
 	/*3C*/	{register_file + A, NULL, NULL, "INR A", 1, ALL_EXCEPT_CARRY, 5},
 		{register_file + A, NULL, NULL, "DCR A", 1, ALL_EXCEPT_CARRY, 5},
-	/*3E*/	{register_file + A, NULL, NULL, "MVI A, D8", 2, NONE, 7},
+	/*3E*/	{NULL, register_file + A, NULL, "MVI A, D8", 2, NONE, 7},
 		{NULL, NULL, NULL, "CMC", 1, CARRY, 4},
 	/*40*/	{register_file + B, register_file + B, NULL, "MOV B, B", 1, NONE, 5},
 		{register_file + C, register_file + B, NULL, "MOV B, C", 1, NONE, 5},
@@ -579,7 +582,7 @@ void AddMemory(data *in)
 }
 
 //Subtract contents of memory from accumulator
-void SubAddMemory(data *in)
+void SubMemory(data *in)
 {	
 	uint8_t subtrahend = memory[h_pair[0]];	
 
@@ -632,7 +635,7 @@ void AdcMemory(data *in)
 
 
 //Subtract memory with borrow
-void SbbAdcMemory(uint8_t *addend_memory, uint8_t adding)
+void SbbMemory(data *in)
 {
 	uint8_t subtrahend = memory[h_pair[0]];
 
@@ -1394,9 +1397,22 @@ void Sphl(data *in)
 }
 
 //Input
+void In(data *in)
+{
+	uint8_t port = memory[pc + 0];
+	pc += 1;
 
+	a[0] = io[port];
+}
 
 //Output
+void Out(data *in)
+{
+	uint8_t port = memory[pc + 0];
+	pc += 1;
+
+	io[port] = a[0];
+}
 
 //Enable interrupts
 void Ei(data *in)
@@ -1422,19 +1438,298 @@ void Nop(data *in)
 
 }
 
-static instruction instruction_set[1] =
-{	
-	Cpi
+static instruction instruction_set[256] =
+{
+	/*00*/	Nop,
+		Lxi,	
+	/*02*/	Stax,
+		Inx,
+	/*04*/	InrRegister,
+		DcrRegister,
+	/*06*/	Mvi,
+		Rlc,
+	/*08*/	Nop,
+		Dad,
+	/*0A*/	Ldax,
+		Dcx,
+	/*0C*/	InrRegister,
+		DcrRegister,
+	/*0E*/	Mvi,
+		Rrc,
+	/*10*/	Nop,
+		Lxi,
+	/*12*/	Stax,
+		Inx,
+	/*14*/	InrRegister,
+		DcrRegister,
+	/*16*/	Mvi,
+		Ral,
+	/*18*/	Nop,
+		Dad,
+	/*1A*/	Ldax,
+		Dcx,
+	/*1C*/	InrRegister,
+		DcrRegister,
+	/*1E*/	Mvi,
+		Rar,
+	/*20*/	Nop,
+		Lxi,	
+	/*22*/	Shld,
+		Inx,
+	/*24*/	InrRegister,
+		DcrRegister,
+	/*26*/	Mvi,
+		Daa,
+	/*28*/	Nop,
+		Dad,
+	/*2A*/	Lhld,
+		Dcx,
+	/*2C*/	InrRegister,
+		DcrRegister,
+	/*2E*/	Mvi,
+		Cma,
+	/*30*/	Nop,
+		Lxi,	
+	/*32*/	Sta,
+		Inx,
+	/*34*/	InrMemory,
+		DcrMemory,
+	/*36*/	Mvi,
+		Stc,
+	/*38*/	Nop,
+		Dad,
+	/*3A*/	Lda,
+		Dcx,
+	/*3C*/	InrRegister,
+		DcrRegister,
+	/*3E*/	Mvi,
+		Cmc,
+	/*40*/	MovRegister,
+		MovRegister,
+	/*42*/	MovRegister,
+		MovRegister,
+	/*44*/	MovRegister,
+		MovRegister,
+	/*46*/	MovFromMemory,
+		MovRegister,
+	/*48*/	MovRegister,
+		MovRegister,
+	/*4A*/	MovRegister,
+		MovRegister,
+	/*4C*/	MovRegister,
+		MovRegister,
+	/*4E*/	MovFromMemory,
+		MovRegister,
+	/*50*/	MovRegister,
+		MovRegister,
+	/*52*/	MovRegister,
+		MovRegister,
+	/*54*/	MovRegister,
+		MovRegister,
+	/*56*/	MovFromMemory,
+		MovRegister,
+	/*58*/	MovRegister,
+		MovRegister,
+	/*5A*/	MovRegister,
+		MovRegister,
+	/*5C*/	MovRegister,
+		MovRegister,
+	/*5E*/	MovFromMemory,
+		MovRegister,
+	/*60*/	MovRegister,
+		MovRegister,
+	/*62*/	MovRegister,
+		MovRegister,
+	/*64*/	MovRegister,
+		MovRegister,
+	/*66*/	MovFromMemory,
+		MovRegister,
+	/*68*/	MovRegister,
+		MovRegister,
+	/*6A*/	MovRegister,
+		MovRegister,
+	/*6C*/	MovRegister,
+		MovRegister,
+	/*6E*/	MovFromMemory,
+		MovRegister,
+	/*70*/	MovToMemory,
+		MovToMemory,
+	/*72*/	MovToMemory,
+		MovToMemory,
+	/*74*/	MovToMemory,
+		MovToMemory,
+	/*76*/	Hlt,
+		MovRegister,
+	/*78*/	MovRegister,
+		MovRegister,
+	/*7A*/	MovRegister,
+		MovRegister,
+	/*7C*/	MovRegister,
+		MovRegister,
+	/*7E*/	MovFromMemory,
+		MovRegister,
+	/*80*/	AddRegister,
+		AddRegister,
+	/*82*/	AddRegister,
+		AddRegister,
+	/*84*/	AddRegister,
+		AddRegister,
+	/*86*/	AddMemory,
+		AddRegister,
+	/*88*/	AdcRegister,
+		AdcRegister,
+	/*8A*/	AdcRegister,
+		AdcRegister,
+	/*8C*/	AdcRegister,
+		AdcRegister,
+	/*8E*/	AdcMemory,
+		AdcRegister,
+	/*90*/	SubRegister,
+		SubRegister,
+	/*92*/	SubRegister,
+		SubRegister,
+	/*94*/	SubRegister,
+		SubRegister,
+	/*96*/	SubMemory,
+		SubRegister,
+	/*98*/	SbbRegister,
+		SbbRegister,
+	/*9A*/	SbbRegister,
+		SbbRegister,
+	/*9C*/	SbbRegister,
+		SbbRegister,
+	/*9E*/	SbbMemory,
+		SbbRegister,
+	/*A0*/	AnaRegister,
+		AnaRegister,
+	/*A2*/	AnaRegister,
+		AnaRegister,
+	/*A4*/	AnaRegister,
+		AnaRegister,
+	/*A6*/	AnaMemory,
+		AnaRegister,
+	/*A8*/	XraRegister,
+		XraRegister,
+	/*AA*/	XraRegister,
+		XraRegister,
+	/*AC*/	XraRegister,
+		XraRegister,
+	/*AE*/	XraMemory,
+		XraRegister,
+	/*B0*/	OraRegister,
+		OraRegister,
+	/*B2*/	OraRegister,
+		OraRegister,
+	/*B4*/	OraRegister,
+		OraRegister,
+	/*B6*/	OraMemory,
+		OraRegister,
+	/*B8*/	CmpRegister,
+		CmpRegister,
+	/*BA*/	CmpRegister,
+		CmpRegister,
+	/*BC*/	CmpRegister,
+		CmpRegister,
+	/*BE*/	CmpMemory,
+		CmpRegister,
+	/*C0*/	Rnz,
+		PopRp,
+	/*C2*/	Jnz,
+		Jmp,
+	/*C4*/	Cnz,
+		PushRp,
+	/*C6*/	Adi,
+		Rst,
+	/*C8*/	Rz,
+		Ret,
+	/*CA*/	Jz,
+		Nop,
+	/*CC*/	Cz,
+		Call,
+	/*CE*/	Aci,
+		Rst,
+	/*D0*/	Rnc,
+		PopRp,
+	/*D2*/	Jnc,
+		Out,
+	/*D4*/	Cnc,
+		PushRp,
+	/*D6*/	Sui,
+		Rst,
+	/*D8*/	Rc,
+		Nop,
+	/*DA*/	Jc,
+		In,
+	/*DC*/	Cc,
+		Nop,
+	/*DE*/	Sbi,
+		Rst,
+	/*E0*/	Rpo,
+		PopRp,
+	/*E2*/	Jpo,
+		Xthl,
+	/*E4*/	Cpo,
+		PushRp,
+	/*E6*/	Ani,
+		Rst,
+	/*E8*/	Rpe,
+		Pchl,
+	/*EA*/	Jpe,
+		Xchg,
+	/*EC*/	Cpe,
+		Nop,
+	/*EE*/	Xri,
+		Rst,
+	/*F0*/	Rp,
+		PopPsw,
+	/*F2*/	Jp,
+		Di,
+	/*F4*/	Cp,
+		PushPsw,
+	/*F6*/	Ori,
+		Rst,
+	/*F8*/	Rm,
+		Sphl,
+	/*FA*/	Jm,
+		Ei,
+	/*FC*/	Cm,
+		Nop,
+	/*FE*/	Cpi,
+		Rst
 };
 
 //---
 
+void DisplayState()
+{
+	printf(" Registers:\n");
+	printf(" B: %02x C: %02x D: %02x E: %02x H: %02x L: %02x\n",
+		 b[0], c[0], d[0], e[0], h[0], l[0]);
+
+	printf(" Accumulator: %02x\n", a[0]);	
+
+	printf(" Status:\n");
+	printf(" PC: %04x SP: %04x Flags: %02x", pc, sp, status[0]);  
+}
+
 int main(int argv, char *argc[])
 {
 	time = 0;
-	memory = (uint8_t*)malloc(MEMORY_SIZE * sizeof(uint8_t));
+	halt_enable = 0;
+	memory = malloc(MEMORY_SIZE * sizeof(uint8_t));
+	io = malloc(PORTS * sizeof(uint8_t));
+	pc = 0;
+
+	memory[0] = 0x06; memory[1] = 0x01;
+	memory[2] = 0x0E; memory[3] = 0x02;
+	memory[4] = 0x16; memory[5] = 0x03;
+	memory[6] = 0x1E; memory[7] = 0x04;
+	memory[8] = 0x2E; memory[9] = 0x05;
+	memory[10] = 0x3E; memory[11] = 0x00;
+	memory[12] = 0x80;
+	memory[13] = 0x76;
 	
-	while(1)
+	while(!halt_enable)
 	{
 		instruction_register = memory[pc];
 		pc += 1;
@@ -1443,7 +1738,9 @@ int main(int argv, char *argc[])
 			(&instruction_set_data[instruction_register]);
 		 	
 	}
-
+	
+	DisplayState();
+	
 	free(memory);			
 	memory = NULL;
 
