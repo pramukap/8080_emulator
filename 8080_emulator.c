@@ -8,6 +8,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include <string.h>
 
 #define C			0
 #define B			1
@@ -445,13 +446,13 @@ void Mvi(data *in)
 	if(destination_is_register)
 	{
 		destination_is_register[0] = memory[pc];
-		pc += ((in -> size) - 1);
+		pc += 1;
 		
 		return;	
 	}
 
 	memory[address] = memory[pc];
-	pc += ((in -> size) - 1);
+	pc += 1;
 }
 
 //Load immediate value to register pair (0x01, 0x11, 0x21, 0x31)
@@ -1700,16 +1701,77 @@ static instruction instruction_set[256] =
 
 //---
 
+void GetProgram(void)
+{
+	char buffer[2] = {0}; 		//stores string version of instruction
+	char* ptr = NULL; 		//parameter for strtol
+	uint8_t num = 0, 		//final int version of instruction
+		not_finished = 1,	//bool indicating if user is done entering input
+		no_memory_overflow = 1;	//bool indicating if user has used up available memory
+	uint32_t i = 0;			//index
+
+	printf("All inputs mut be 2 digit hex numbers.\nEnter \"fi\" to finish input.\n");
+
+	do{
+		buffer[0] = 0;
+		buffer[1] = 0;
+
+		printf("Memory Location %i/%i: ", i + 1, MEMORY_SIZE);
+
+		if(scanf("%2s", buffer) != 1 || buffer[1] == 0) //if the second value in the buffer is 0, than only one character was entered
+		{
+			printf("Invalid Input. Each input must be a 2 digit hex value.\nTry again: ");
+			continue;
+		}
+
+		if(strcmp(buffer, "fi") == 0)
+		{
+			not_finished = 0;
+			continue;
+		}
+
+		if(i >= MEMORY_SIZE)
+		{
+			no_memory_overflow = 0;
+			continue;
+		}
+
+		if(!((buffer[0] >= '0' && buffer[0] <= '9') || (buffer[0] >= 'a' && buffer[0] <= 'f') || (buffer[0] >= 'A' && buffer[0] <= 'F')) 
+		|| !((buffer[1] >= '0' && buffer[1] <= '9') || (buffer[1] >= 'a' && buffer[1] <= 'f') || (buffer[1] >= 'A' && buffer[1] <= 'F')))
+		{
+			printf("Invalid input. Each input must be a 2 digit hex value\nTry again: ");
+			continue;
+		}
+
+		num = (uint8_t)strtol(buffer, &ptr, 16);
+		
+		memory[i] = num;
+
+		i++;
+	}
+	while(not_finished && no_memory_overflow);
+
+	if(!not_finished)
+	{
+		printf("\nProgram saved to memory. Ready for execution.\n\n");
+	}
+	else if(!no_memory_overflow)
+	{
+		printf("\nProgram is too large to fit in memory.\n");
+		exit(0);
+	}
+}
+
 void DisplayState()
 {
-	printf(" Registers:\n");
-	printf(" B: %02x C: %02x D: %02x E: %02x H: %02x L: %02x\n",
+	printf("Registers:\n");
+	printf("B: %02x C: %02x D: %02x E: %02x H: %02x L: %02x\n",
 		 b[0], c[0], d[0], e[0], h[0], l[0]);
 
-	printf(" Accumulator: %02x\n", a[0]);	
+	printf("Accumulator: %02x\n", a[0]);	
 
-	printf(" Status:\n");
-	printf(" PC: %04x SP: %04x Flags: %02x", pc, sp, status[0]);  
+	printf("Status:\n");
+	printf("PC: %04x SP: %04x Flags: %02x\n", pc, sp, status[0]);  
 }
 
 int main(int argv, char *argc[])
@@ -1720,14 +1782,7 @@ int main(int argv, char *argc[])
 	io = malloc(PORTS * sizeof(uint8_t));
 	pc = 0;
 
-	memory[0] = 0x06; memory[1] = 0x01;
-	memory[2] = 0x0E; memory[3] = 0x02;
-	memory[4] = 0x16; memory[5] = 0x03;
-	memory[6] = 0x1E; memory[7] = 0x04;
-	memory[8] = 0x2E; memory[9] = 0x05;
-	memory[10] = 0x3E; memory[11] = 0x00;
-	memory[12] = 0x80;
-	memory[13] = 0x76;
+	GetProgram();
 	
 	while(!halt_enable)
 	{

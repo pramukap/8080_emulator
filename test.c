@@ -1,6 +1,10 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <string.h>
+
+#define MEMORY_SIZE 4
+#define INPUT_SIZE (MEMORY_SIZE + 1)
 
 struct instruction_data
 {
@@ -28,30 +32,86 @@ int test2(uint8_t *c, uint16_t *d)
 	return 3;	
 }
 
-
+//Test of code that will receive and store 8080 machine code to memory
+/*
+ *Test Cases:
+ *Input:	Expected Output:
+ *0		bad input
+ *1		bad input
+ *00		0
+ *01		1
+ *10		16
+ *a		bad input
+ *0a		10
+ *fa		250
+ *ag		bad input
+ *ga		bad input
+ *1a		26
+ *1A		26
+ *fA		250
+ *Fa		250
+ */
 void test3()
 {
-	char buffer[3];
-	char* ptr = NULL;
-	uint8_t num = 0;
+	char buffer[2] = {0}; //stores string version of instruction
+	char* ptr = NULL; 	//parameter for strtol
+	uint8_t num = 0, 	//final int version of instruction
+		not_finished = 1,
+		no_memory_overflow = 1;
+	uint32_t i = 0;
 
-	printf("Input instruction: \n");
+	printf("All inputs mut be 2 digit hex numbers.\nEnter \"fi\" to finish input.\n");
 
-	if(!(scanf("%2s", buffer) == 1) || buffer[3] != 0)
+	//print current memory address or current index out of total indices
+	do{
+		buffer[0] = 0;
+		buffer[1] = 0;
+
+		printf("Memory Space %i/%i: ", i + 1, MEMORY_SIZE);
+
+		if(scanf("%2s", buffer) != 1 || buffer[1] == 0) //if the second value in the buffer is 0, than only one character was entered
+		{
+			printf("Invalid Input. Each input must be a 2 digit hex value.\nTry again: ");
+			continue;
+		}
+
+		if(strcmp(buffer, "fi") == 0)
+		{
+			not_finished = 0;
+			continue;
+		}
+
+		if(i >= MEMORY_SIZE)
+		{
+			no_memory_overflow = 0;
+			continue;
+		}
+
+		printf("|%i %i|\n", buffer[0], buffer[1]);
+
+		if(!((buffer[0] >= '0' && buffer[0] <= '9') || (buffer[0] >= 'a' && buffer[0] <= 'f') || (buffer[0] >= 'A' && buffer[0] <= 'F')) 
+		|| !((buffer[1] >= '0' && buffer[1] <= '9') || (buffer[1] >= 'a' && buffer[1] <= 'f') || (buffer[1] >= 'A' && buffer[1] <= 'F')))
+		{
+			printf("Invalid input. Each input must be a 2 digit hex value\nTry again: ");
+			continue;
+		}
+
+		//if i < MEMORY_SIZE put num in memory
+		num = (uint8_t)strtol(buffer, &ptr, 16);
+		printf("%i\n", num);
+		i++;
+	}
+	while(not_finished && no_memory_overflow);
+
+	if(!not_finished)
 	{
-		printf("Input Too Large");
+		printf("Program saved to memory. Ready for execution.\n");
+	}
+	else if(!no_memory_overflow)
+	{
+		printf("Program is too large to fit in memory.\n");
 		exit(0);
 	}
-
-	printf("%s\n", buffer);
-
-	if(!((buffer[1] >= 48 && buffer[1] <= 57) || (buffer[1] >= 65 && buffer[1] <= 70) || (buffer[1] >= 97 && buffer[1] <= 102))) 
-	{
-		printf("Improper value in input\n");
-		exit(0);
-	}
-	num = (uint8_t)strtol(buffer, &ptr, 16);
-	printf("%i\n", num);
 }
 
 instruction instruction_set[2] = {test, test2};
