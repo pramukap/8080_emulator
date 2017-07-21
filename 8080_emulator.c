@@ -19,6 +19,12 @@
 #define MASK6			0x40
 #define MASK7			0x70
 
+#define CY			0x01
+#define AC			0x02
+#define S			0x04
+#define Z			0x08
+#define EP			0x10
+
 #define C			0
 #define B			1
 #define E			2
@@ -27,8 +33,8 @@
 #define H			5
 #define A			6
 #define STATUS			7
-#define Z			8
-#define W			9
+//#define Z			8
+//#define W			9
 
 #define B_PAIR			0
 #define D_PAIR			2
@@ -78,8 +84,8 @@ static uint8_t *const status = register_file + STATUS;
 
 //Registers Z and W can only be used for instruction execution
 //These registers are not directly accessible to the programmer
-static uint8_t *const z = register_file + Z;
-static uint8_t *const w = register_file + W;
+//static uint8_t *const z = register_file + Z;
+//static uint8_t *const w = register_file + W;
 
 //Register Pairs
 //B+C
@@ -435,14 +441,14 @@ static inline void ModifyFlags(uint8_t bit_4_sum, uint16_t result, uint8_t flags
 			_result >>= 1; 			
 		}
 
-		status[0] &= 0x10;
+		status[0] &= ~0x10;
 		status[0] += !(parity % 2) << 4;
 	}
 
 	//Modify Zero Flag (Set if 0)
 	if(flags_to_modify & 0x08)
 	{
-		if(result == 0)
+		if((uint8_t)result == 0)
 		{
 			status[0] |= 0x08;
 		}
@@ -455,7 +461,7 @@ static inline void ModifyFlags(uint8_t bit_4_sum, uint16_t result, uint8_t flags
 	//Modify Sign Flag (Set if 1)
 	if(flags_to_modify & 0x04)
 	{
-		status[0] &= 0x4;
+		status[0] &= ~0x04;
 		status[0] += (result & 0x80) >> 5;
 	}
 
@@ -479,21 +485,15 @@ static inline void ModifyFlags(uint8_t bit_4_sum, uint16_t result, uint8_t flags
 		}
 		else 
 		{
-			status[0] &= 0x02;
+			status[0] &= ~0x02;
 		}
 	}
 
 	//Modify Carry/Borrow Flag (Set if Carry/Borrow)
 	if(flags_to_modify & 0x01)
 	{
-		if(result & 0x100)
-		{
-			status[0] |= 0x01;
-		}
-		else
-		{
-			status[0] &= 0x01;
-		}
+		status[0] &= ~0x01;
+		status[0] += (result & 0x100) >> 8; 		
 	}
 }
 
@@ -908,7 +908,7 @@ void Dad(data *in)
 
 	h_pair[0] += addend;
 
-	ModifyFlags(NULL, result, in -> flags);
+	ModifyFlags(0, result, in -> flags);
 }
 
 //Decimal Adjust Accumulator
@@ -931,83 +931,181 @@ void Daa(data *in)
 		a[0] += 0x60;
 	} 
 
-	ModiyFlags(bit_4, result, in -> flags);
+	ModifyFlags(bit_4, result, in -> flags);
 }
 
 //Logic
 //AND register
 void AnaRegister(data *in)
 {
-	uint8_t and_value = (in -> register_1)[0];
+	uint8_t and_value = (in -> register_1)[0],
+		bit_4_sum;
+	uint16_t result;
+
+	bit_4_sum = ((a[0] & MASK4) >> 4) + ((and_value & MASK4) >> 4);
+	result = a[0] & and_value;
 
 	a[0] &= and_value;
+
+	ModifyFlags(bit_4_sum, result, in -> flags);
+	status[0] &= ~0x01;
 }
 
 //AND memory
 void AnaMemory(data *in)
 {
-	uint16_t address = h_pair[0];	
+	uint8_t bit_4_sum;
+	uint16_t address = h_pair[0],
+		 result;
+
+	bit_4_sum = ((a[0] & MASK4) >> 4) + ((memory[address] & MASK4) >> 4);
+	result = a[0] & memory[address];
 
 	a[0] &= memory[address];
+
+	ModifyFlags(bit_4_sum, result, in -> flags);
+	status[0] &= ~0x01;
 }
 
 //AND immediate
 void Ani(data *in)
 {
-	a[0] &= memory[pc + 0];
+	uint8_t and_value = memory[pc + 0], 
+		bit_4_sum;
+	uint16_t result;
+
+	bit_4_sum = ((a[0] & MASK4) >> 4) + ((and_value & MASK4) >> 4);	
+
+	result = a[0] & and_value;
+
+	a[0] &= and_value;
 	pc += 1;
+
+	ModifyFlags(bit_4_sum, result, in -> flags);
+	status[0] &= ~0x03;
 }
 
 //XOR register
 void XraRegister(data *in)
 {
-	uint8_t xor_value = (in -> register_1)[0];
+	uint8_t xor_value = (in -> register_1)[0],
+		bit_4_sum;
+	uint16_t result;
+
+	bit_4_sum = ((a[0] & MASK4) >> 4) + ((xor_value & MASK4) >> 4);
+
+	result = a[0] ^ xor_value;
 
 	a[0] ^= xor_value;
+
+	ModifyFlags(bit_4_sum, result, in -> flags);
+	status[0] &= ~0x03;
 }
 
 //XOR memory
 void XraMemory(data *in)
 {
-	uint16_t address = h_pair[0];
+	uint8_t bit_4_sum;
+	uint16_t address = h_pair[0],
+		 result;
+
+	bit_4_sum = ((a[0] & MASK4) >> 4) + ((memory[address] & MASK4) >> 4);
+
+	result = a[0] ^ memory[address];
 
 	a[0] ^= memory[address];
+	
+	ModifyFlags(bit_4_sum, result, in -> flags);
+	status[0] &= ~0x03;
 }
 
 //XOR immediate
 void Xri(data *in)
 {
-	a[0] ^= memory[pc + 0];
+	uint8_t xor_value = memory[pc + 0],
+  		bit_4_sum;
+	uint16_t result;
+
+	bit_4_sum = ((a[0] & MASK4) >> 4) + ((xor_value & MASK4) >> 4);
+
+	result = a[0] ^ xor_value;
+
+	a[0] ^= xor_value;
 	pc += 1;
+
+	ModifyFlags(bit_4_sum, result, in -> flags);
+	status[0] &= ~0x03;
 }
 
 //OR register
 void OraRegister(data *in)
 {
-	uint8_t or_value = (in -> register_1)[0];
+	uint8_t or_value = (in -> register_1)[0],
+		bit_4_sum;
+	uint16_t result;
+
+	bit_4_sum = ((a[0] & MASK4) >> 4) + ((or_value & MASK4) >> 4);
+
+	result = a[0] | or_value;
 
 	a[0] |= or_value;
+
+	ModifyFlags(bit_4_sum, result, in -> flags);
+	status[0] &= ~0x03;
 }
 
 //OR memory
 void OraMemory(data *in)
 {
-	uint16_t address = h_pair[0];
+	uint8_t bit_4_sum;
+	uint16_t address = h_pair[0],
+		 result;
+
+	bit_4_sum = ((a[0] & MASK4) >> 4) + ((memory[address] & MASK4) >> 4);
+
+	result = a[0] | memory[address];
 
 	a[0] |= memory[address];
+
+	ModifyFlags(bit_4_sum, result, in -> flags);
+	status[0] &= ~0x03;
 }
 
 //OR immediate
 void Ori(data *in)
 {
-	a[0] |= memory[pc + 0];
+	uint8_t or_value = memory[pc + 0],
+		bit_4_sum;
+	uint16_t result;
+
+	bit_4_sum = ((a[0] & MASK4) >> 4) + ((or_value & MASK4) >> 4);
+
+	result = a[0] | or_value;
+
+	a[0] |= or_value;
 	pc += 1;
+
+	ModifyFlags(bit_4_sum, result, in -> flags);
+	status[0] &= ~0x03;
 }
 
 //Compare register
 void CmpRegister(data *in)
 {
-	uint8_t compare_value = (in -> register_1)[0];
+	uint8_t compare_value = (in -> register_1)[0],
+		bit_4_sum = ((a[0] & MASK4) >> 4) + ((compare_value & MASK4) >> 4),
+		_status = status[0];
+	uint16_t result = a[0] - compare_value;
+	
+	ModifyFlags(bit_4_sum, result, in -> flags);
+
+	/*
+	 *restore the original values of Z and CY because 
+	 *ModifyFlags changes them improperly and 
+	 *the compare instruction is not guaranteed to change them
+	 */
+	status[0] &= ~(Z + CY);
+	status[0] += _status & (Z + CY);
 
 	if(a[0] == compare_value)
 	{
@@ -1023,7 +1121,20 @@ void CmpRegister(data *in)
 //Compare memory
 void CmpMemory(data *in)
 {
-	uint16_t address= h_pair[0];
+	uint16_t address = h_pair[0],
+		 result = a[0] - memory[address];
+	uint8_t bit_4_sum = ((a[0] & MASK4) >> 4) + ((memory[address] & MASK4) >> 4),
+		_status = status[0];
+
+	ModifyFlags(bit_4_sum, result, in -> flags);
+
+	/*
+	 *restore the original values of Z and CY because 
+	 *ModifyFlags changes them improperly and 
+	 *the compare instruction is not guaranteed to change them
+	 */
+	status[0] &= ~(Z + CY);
+	status[0] += _status & (Z + CY);
 
 	if(a[0] == memory[address])
 	{
@@ -1037,14 +1148,29 @@ void CmpMemory(data *in)
 }
 
 //Compare immediate
-void Cpi(data *input)
+void Cpi(data *in)
 {
-	if(a[0] == memory[pc + 0])
+	uint8_t compare_value = memory[pc + 0],
+		bit_4_sum = ((a[0] & MASK4) >> 4) + ((compare_value & MASK4) >> 4),
+		_status = status[0];
+	uint16_t result = a[0] - compare_value;
+	
+	ModifyFlags(bit_4_sum, result, in -> flags);
+
+	/*
+	 *restore the original values of Z and CY because 
+	 *ModifyFlags changes them improperly and 
+	 *the compare instruction is not guaranteed to change them
+	 */
+	status[0] &= ~(Z + CY);
+	status[0] += _status & (Z + CY);
+
+	if(a[0] == compare_value)
 	{
 		status[0] |= 0x08;	
 	}
 
-	if(a[0] < memory[pc + 0])
+	if(a[0] < compare_value)
 	{
 		status[0] |= 0x01;
 	}
@@ -1058,14 +1184,20 @@ void Rlc(data *in)
 	uint8_t bit_7 = (a[0] & 0x80) >> 7;
 
 	a[0] = (a[0] << 1) + bit_7;
+	
+	status[0] &= ~CY;
+	status[0] += bit_7;
 }
 
 //Rotate right
 void Rrc(data *in)
 {
 	uint8_t bit_0 = a[0] & 0x01;
-	
+
 	a[0] = (a[0] >> 1) + (bit_0 << 7);
+
+	status[0] &= ~CY;
+	status[0] += bit_0;
 }
 
 //Rotate left through carry
@@ -1074,7 +1206,7 @@ void Ral(data *in)
 	uint8_t new_value_of_carry = (a[0] * 0x80) >> 7;
 
 	a[0] = (a[0] << 1) + (status[0] & 0x01);			//pass current carry flag value to bit 0 of accumulator
-	status[0] = (status[0] & ~0x01) + new_value_of_carry;		//pass bit 7 of accumulator to carry flag
+	status[0] = (status[0] & ~CY) + new_value_of_carry;		//pass bit 7 of accumulator to carry flag
 }
 
 //Rotate right through carry
@@ -1083,7 +1215,7 @@ void Rar(data *in)
 	uint8_t new_value_of_carry = a[0] & 0x01;
 
 	a[0] = (a[0] >> 1) + ((status[0] & 0x01) << 7);
-	status[0] = (status[0] & ~0x01) + new_value_of_carry;
+	status[0] = (status[0] & ~CY) + new_value_of_carry;
 }
 
 //Complement accumulator
@@ -1919,7 +2051,7 @@ void GetProgram(void)
 		buffer[0] = 0;
 		buffer[1] = 0;
 
-		printf("Memory Location %i/%i: ", i + 1, MEMORY_SIZE);
+		printf("Address %i/%i: ", i, MEMORY_SIZE-1);
 
 		if(scanf("%2s", buffer) != 1 || buffer[1] == 0) //if the second value in the buffer is 0, than only one character was entered
 		{
@@ -1984,11 +2116,13 @@ int main(int argv, char *argc[])
 	memory = malloc(MEMORY_SIZE * sizeof(uint8_t));
 	io = malloc(PORTS * sizeof(uint8_t));
 	pc = 0;
+	status[0] = 0;
 
 	GetProgram();
 	
 	while(!halt_enable)
 	{
+		printf("Current pc: %2x\n", pc);
 		instruction_register = memory[pc];
 		pc += 1;
 
