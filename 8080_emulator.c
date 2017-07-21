@@ -10,6 +10,15 @@
 #include <stdint.h>
 #include <string.h>
 
+#define MASK0			0x01
+#define MASK1			0x02
+#define MASK2			0x04
+#define MASK3			0x08
+#define MASK4			0x10
+#define MASK5			0x20
+#define MASK6			0x40
+#define MASK7			0x70
+
 #define C			0
 #define B			1
 #define E			2
@@ -397,6 +406,7 @@ static data instruction_set_data[256] =
 
 //Instruction-Emulating Functions
 
+//Special Emulator Functions
 static inline void AddTime(uint8_t duration_of_instruction)
 {
 	//what to do for instructions with 2 timings
@@ -407,6 +417,84 @@ static inline void AddTime(uint8_t duration_of_instruction)
 static inline void OutputToDebugTerminal(char *instruction_name)
 {
 	printf("%s\n", instruction_name);
+}
+
+static inline void ModifyFlags(uint8_t bit_4_sum, uint16_t result, uint8_t flags_to_modify)
+{
+	uint8_t i, parity, _result, bit_4_result;
+
+	//Modify Parity Flag (Set if even parity)
+	if(flags_to_modify & 0x10)
+	{
+		_result = result;
+		parity = 0;
+
+		for(i = 0; i < 8; i++)
+		{
+			parity += _result & 0x01;
+			_result >>= 1; 			
+		}
+
+		status[0] &= 0x10;
+		status[0] += !(parity % 2) << 4;
+	}
+
+	//Modify Zero Flag (Set if 0)
+	if(flags_to_modify & 0x08)
+	{
+		if(result == 0)
+		{
+			status[0] |= 0x08;
+		}
+		else
+		{
+			status[0] &= ~0x08;
+		}		
+	}
+	
+	//Modify Sign Flag (Set if 1)
+	if(flags_to_modify & 0x04)
+	{
+		status[0] &= 0x4;
+		status[0] += (result & 0x80) >> 5;
+	}
+
+	//Modify Aux Carry Flag (Set if Carry)
+	if(flags_to_modify & 0x02)
+	{
+
+		bit_4_result = (result & 0x10) >> 4;
+	
+		/*
+		 *The following cases show the result when there is no carry and when there is a carry
+		 *Carry		0	0	0	0	1	1	1	1
+		 *Operand 1  	0	0	1	1	0	0	1	1	
+		 *Operand 2	0	1	0	1	0	1	0	1
+		 *Result	0	1	1	0C1	1	0C1	0C1	1C1
+		 */
+		if(((bit_4_sum == 0 || bit_4_sum == 2) && bit_4_result == 1)
+		|| (bit_4_sum == 1 && bit_4_result == 0))
+		{
+			status[0] |= 0x02;
+		}
+		else 
+		{
+			status[0] &= 0x02;
+		}
+	}
+
+	//Modify Carry/Borrow Flag (Set if Carry/Borrow)
+	if(flags_to_modify & 0x01)
+	{
+		if(result & 0x100)
+		{
+			status[0] |= 0x01;
+		}
+		else
+		{
+			status[0] &= 0x01;
+		}
+	}
 }
 
 //Data Transfer
@@ -557,140 +645,241 @@ void Xchg(data *in)
 }
 
 //Arithmetic
-
 //Add contents of register to accumulator
 void AddRegister(data *in)
 {
-	uint8_t addend = (in -> register_1)[0];
+	uint8_t addend = (in -> register_1)[0],
+		bit_4_sum;
+	uint16_t result; 
 
-	a[0] += addend; 
+	bit_4_sum = ((a[0] & MASK4) >> 4) + ((addend & MASK4) >> 4);
+	result = a[0] + addend;
+
+	a[0] += addend;
+
+	ModifyFlags(bit_4_sum, result, in -> flags); 
 }
 
 //Subtract contents of register from accumulator
 void SubRegister(data *in)
 {
-	uint8_t subtrahend = (in -> register_1)[0];
+	uint8_t subtrahend = (in -> register_1)[0],
+		bit_4_sum;
+	uint16_t result;
+
+	bit_4_sum = ((a[0] & MASK4) >> 4) + ((subtrahend & MASK4) >> 4);
+	result = a[0] - subtrahend;
 
 	a[0] -= subtrahend;
+
+	ModifyFlags(bit_4_sum, result, in -> flags);
 }
 
 //Add contents of memory to accumulator
 void AddMemory(data *in)
 {
-	uint8_t addend = memory[h_pair[0]];
+	uint8_t addend = memory[h_pair[0]],
+		bit_4_sum;
+	uint16_t result;
+
+	bit_4_sum = ((a[0] & MASK4) >> 4) + ((addend & MASK4) >> 4);
+	result = a[0] + addend;
 
 	a[0] += addend;
+
+	ModifyFlags(bit_4_sum, result, in -> flags);
 }
 
 //Subtract contents of memory from accumulator
 void SubMemory(data *in)
 {	
-	uint8_t subtrahend = memory[h_pair[0]];	
+	uint8_t subtrahend = memory[h_pair[0]],	
+		bit_4_sum;
+	uint16_t result;
+
+	bit_4_sum = ((a[0] & MASK4) >> 4) + ((subtrahend & MASK4) >> 4);
+	result = a[0] - subtrahend;
 
 	a[0] -= subtrahend;
+
+	ModifyFlags(bit_4_sum, result, in -> flags);
 }
 
 //Add immediate
 void Adi(data *in)
 {
-	uint8_t addend = memory[pc + 0];
+	uint8_t addend = memory[pc + 0],
+		bit_4_sum;
+	uint16_t result;
+
+	bit_4_sum = ((a[0] & MASK4) >> 4) + ((addend & MASK4) >> 4);
+	result = a[0] + addend;
 
 	a[0] += addend;
 	pc += 1;
+
+	ModifyFlags(bit_4_sum, result, in -> flags);
 }
 
 //Subtract immediate
 void Sui(data *in)
 {
-	uint8_t subtrahend = memory[pc+0];
+	uint8_t subtrahend = memory[pc+0],
+		bit_4_sum;
+	uint16_t result;
+
+	bit_4_sum = ((a[0] & MASK4) >> 4) + ((subtrahend & MASK4) >> 4);
+	result = a[0] - subtrahend;
 
 	a[0] -= subtrahend;
 	pc += 1;
+
+	ModifyFlags(bit_4_sum, result, in -> flags);
 }
 
 //Add register with carry
 void AdcRegister(data *in)
 {
-	uint8_t addend = (in -> register_1)[0];
+	uint8_t addend = (in -> register_1)[0],
+		bit_4_sum;
+	uint16_t result;
 
+	bit_4_sum = ((a[0] & MASK4) >> 4) + ((addend & MASK4) >> 4);
+	result = a[0] + addend;
 
-	a[0] += addend + (status[0] & 0x01);	//status bit 0 is the carry/borrow flag
+	a[0] += addend + (status[0] & 0x01);	//status bit 0 is the carry/borrow flag	pc += 1;
+
+	ModifyFlags(bit_4_sum, result, in -> flags);
 }
 
 //Subtract register with borrow
 void SbbRegister(data *in)
 {
-	uint8_t subtrahend = (in -> register_1)[0];
+	uint8_t subtrahend = (in -> register_1)[0],
+		bit_4_sum;
+	uint16_t result;
+
+	bit_4_sum = ((a[0] & MASK4) >> 4) + ((subtrahend & MASK4) >> 4);
+	result = a[0] - subtrahend;
 
 	a[0] -= (subtrahend + (status[0] & 0x01));
+
+	ModifyFlags(bit_4_sum, result, in -> flags);
 }
 
 //Add memory with carry
 void AdcMemory(data *in)
 {
-	uint8_t addend = memory[h_pair[0]];
+	uint8_t addend = memory[h_pair[0]],
+		bit_4_sum;
+	uint16_t result;
 
+	bit_4_sum = ((a[0] & MASK4) >> 4) + ((addend & MASK4) >> 4);
+	result = a[0] + addend;
 
-	a[0] += addend + (status[0] & 0x01);
+	a[0] += addend + (status[0] & 0x01);	//status bit 0 is the carry/borrow flag	pc += 1;
+
+	ModifyFlags(bit_4_sum, result, in -> flags);
 }
 
 
 //Subtract memory with borrow
 void SbbMemory(data *in)
 {
-	uint8_t subtrahend = memory[h_pair[0]];
+	uint8_t subtrahend = memory[h_pair[0]],
+		bit_4_sum;
+	uint16_t result;
+
+	bit_4_sum = ((a[0] & MASK4) >> 4) + ((subtrahend & MASK4) >> 4);
+	result = a[0] - subtrahend;
 
 	a[0] -= (subtrahend + (status[0] & 0x01));
+
+	ModifyFlags(bit_4_sum, result, in -> flags);
 }
 
 //Add immediate with carry
 void Aci(data *in)
 {
-	uint8_t addend = memory[pc + 0];
-	
+	uint8_t addend = memory[pc + 0],
+		bit_4_sum;
+	uint16_t result;
+
+	bit_4_sum = ((a[0] & MASK4) >> 4) + ((addend & MASK4) >> 4);
+	result = a[0] + addend;
+
 	a[0] += addend + (status[0] & 0x01);
 	pc += 1;
+
+	ModifyFlags(bit_4_sum, result, in -> flags);
 }
 
 //Subtract immediate with borrow
 void Sbi(data *in)
 {
-	uint8_t subtrahend = memory[pc + 0];
+	uint8_t subtrahend = memory[pc + 0],
+		bit_4_sum;
+	uint16_t result;
+
+	bit_4_sum = ((a[0] & MASK4) >> 4) + ((subtrahend & MASK4) >> 4);
+	result = a[0] - subtrahend;
 
 	a[0] -= (subtrahend + (status[0] & 0x01));
 	pc += 1;
+
+	ModifyFlags(bit_4_sum, result, in -> flags);
 }
 
 //Increment register
 void InrRegister(data *in)
 {
-	uint8_t *increment_register = (in -> register_1);
+	uint8_t *increment_register = (in -> register_1),
+		bit_4;
+
+	bit_4 = (increment_register[0] & MASK4) >> 4;
 
 	increment_register[0] += 1;
+
+	ModifyFlags(bit_4, (uint16_t)increment_register[0], in -> flags);
 }
 
 //Decrement register
 void DcrRegister(data *in)
 {
-	uint8_t *decrement_register = (in -> register_1);	
+	uint8_t *decrement_register = (in -> register_1),
+		bit_4;
+
+	bit_4 = (decrement_register[0] & MASK4) >> 4;	
 
 	decrement_register[0] -= 1;
+
+	ModifyFlags(bit_4, (uint16_t)decrement_register[0], in -> flags);
 }
 
 //Increment memory
 void InrMemory(data *in)
 {
+	uint8_t bit_4;
 	uint16_t address = h_pair[0];
 
+	bit_4 = (memory[address] & MASK4) >> 4;
+
 	memory[address] += 1;
+
+	ModifyFlags(bit_4, (uint16_t)memory[address], in -> flags);
 }
 
 //Decrement memory
 void DcrMemory(data *in)
 {
+	uint8_t bit_4;
 	uint16_t address = h_pair[0];
 
+	bit_4 = (memory[address] & MASK4) >> 4;
+
 	memory[address] -= 1;
+
+	ModifyFlags(bit_4, (uint16_t)memory[address], in -> flags);
 }
 
 //Increment register pair
@@ -712,23 +901,37 @@ void Dcx(data *in)
 //Add register pair to register pair H
 void Dad(data *in)
 {
-	uint16_t addend = (in -> register_pair)[0];
+	uint16_t addend = (in -> register_pair)[0],
+		 result;
+
+	result = h_pair[0] + addend;
 
 	h_pair[0] += addend;
+
+	ModifyFlags(NULL, result, in -> flags);
 }
 
 //Decimal Adjust Accumulator
 void Daa(data *in)
 {
+	uint8_t bit_4;
+	uint16_t result = a[0];
+
+	bit_4 = ((a[0] & MASK4) >> 4);
+
 	if((a[0] & 0x0F) > 9 || (status[0] & 0x02))		//status bit 1 is the auxiliary carry flag
 	{
+		result = a[0] + 0x06;
 		a[0] += 0x06;
 	} 
 
 	if(((a[0] & 0xF0) >> 4) > 9 || (status[0] & 0x01))	//status bit 0 is the carry flag
 	{
+		result = a[0] +  0x60;
 		a[0] += 0x60;
 	} 
+
+	ModiyFlags(bit_4, result, in -> flags);
 }
 
 //Logic
