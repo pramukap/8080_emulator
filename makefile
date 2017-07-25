@@ -9,7 +9,7 @@ CC = gcc
 FLAGS = -g -Wall -Wpadded
 
 #Source Files
-SRC = 8080_emulator.o
+SRC = emulator_8080.o
 
 #Executable File
 TARGET = emu
@@ -20,11 +20,19 @@ all: $(TARGET)
 $(TARGET): $(SRC)
 	$(CC) $(FLAGS) $(SRC) -o $(TARGET) 
 
-8080_emulator.o: 8080_emulator.c
-	gcc -g -Wall -c 8080_emulator.c
+8080_emulator.o: emulator_8080.c
+	gcc -g -Wall -c emulator_8080.c
 
-compile: 8080_emulator.c
-	gcc -Wall -c 8080_emulator.c 2> error.txt
+compile_emulator: emulator_8080.c
+	gcc -Wall -c emulator_8080.c 2> error.txt
+
+assembler: assembler_8080.c
+	gcc -Wall -g assembler_8080.c -o assembler
+
+compile_assembler: assembler_8080.c
+	gcc -Wall -c assembler_8080.c 2> error.txt
 
 clean:
 	rm -rf *o
+
+
