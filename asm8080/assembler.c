@@ -87,7 +87,7 @@ int main(int argc, char *argv[])
 	//process code-buffer to produce array of strings of line tokens and linked list of labels
 	code_index = 0;
 
-	lines = malloc(sizeof(token));
+	//lines = malloc(sizeof(token));
 	buffer = malloc(sizeof(char));
 	
 	while(code_index < code_size)
@@ -102,7 +102,7 @@ int main(int argc, char *argv[])
 	
 			//reset buffer
 			temporary_ptr = buffer;
-			if((buffer = realloc(buffer, sizeof(char))) == NULL)
+			if((buffer = malloc(sizeof(char))) == NULL)
 			{
 				printf("No more memory to store program. Please try again.\n");
 				free(temporary_ptr);
@@ -176,9 +176,12 @@ int main(int argc, char *argv[])
 	buffer[1] = 'i';
 	printf("%s\n", buffer);
 	*/
+	code_index =  (uint16_t)BinarySearch("mov e,a");
+	printf("Result of Binary Search: %x\n", code_index);  
 
 	//process operands
-
+		
+	
 	//free memory
 	
 	return 1;

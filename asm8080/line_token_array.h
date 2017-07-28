@@ -1,9 +1,10 @@
-/****************************************
- * 8080_Assembler			*
- * Pramuka Perera			*
- * July 23, 2017			*
- * Assembler for Intel 8080 Processor	*
- ****************************************/
+/********************************************************************************
+ * Line Token Array Object for the 8080 Assembler				*
+ * Pramuka Perera								*
+ * 26 July, 2017								*
+ * Line token array and corresponding functions to be used by assembler.c	*
+ ********************************************************************************/
+
 
 #ifndef INCLUDE
 	#include <stdlib.h>

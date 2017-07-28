@@ -1,3 +1,10 @@
+/********************************************************************************
+ * Label List Object for the 8080 Assembler					*
+ * Pramuka Perera								*
+ * 26 July, 2017								*
+ * Linked list of Labels and corresponding functions to be used by assembler.c	*
+ ********************************************************************************/
+
 #ifndef INCLUDE
 	#include <stdlib.h>
 	#include <stdio.h>

@@ -1,3 +1,10 @@
+/********************************************************************************
+ * 8080 Instruction Set Object for the 8080 Assembler				*
+ * Pramuka Perera								*
+ * 26 July, 2017								*
+ * Instruction set and corresponding functions to be used by assembler.c	*
+ ********************************************************************************/
+
 #ifndef INCLUDE
 	#include <stdlib.h>
 	#include <stdio.h>
@@ -7,6 +14,9 @@
 	#define INCLUDE
 #endif
 
+#define ARRAY_SIZE 256
+#define MATCH 0
+
 typedef struct instruction_pair
 {
 	char* mnemonic;
@@ -15,7 +25,7 @@ typedef struct instruction_pair
 pair;
 
 
-pair instruction_set[256] =
+pair instruction_set[ARRAY_SIZE] =
 {
 	/*00*/	{"aci", 0xce},
 		{"adc a,", 0x8f},
@@ -262,3 +272,31 @@ pair instruction_set[256] =
 	/*f2*/	{"xri", 0xee},
 		{"xthl", 0xe3}
 };
+
+int BinarySearch(char *find_this)
+{
+	int 	search_index = ARRAY_SIZE/2,
+		result;	
+	double rounded_shift_value = ARRAY_SIZE/4;
+
+	while((result = strcmp(find_this, instruction_set[search_index].mnemonic)) != MATCH)
+	{
+		if(search_index <= 0 || search_index >= ARRAY_SIZE - 1)
+		{
+			return -1;
+		}
+
+		rounded_shift_value = ((double)rounded_shift_value / 2.0) + 0.5;
+	
+		if(result < 0)
+		{
+			search_index = (int)((double)search_index - rounded_shift_value);
+		}	
+		else
+		{
+			search_index = (int)((double)search_index + rounded_shift_value);
+		}
+	} 
+
+	return instruction_set[search_index].opcode;
+}
