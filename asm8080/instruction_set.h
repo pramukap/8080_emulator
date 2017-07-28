@@ -15,7 +15,9 @@
 #endif
 
 #define ARRAY_SIZE 256
-#define MATCH 0
+#define	BEFORE	(-1)
+#define MATCH 	0
+#define AFTER	1
 
 typedef struct instruction_pair
 {
@@ -273,13 +275,55 @@ pair instruction_set[ARRAY_SIZE] =
 		{"xthl", 0xe3}
 };
 
-int BinarySearch(char *find_this)
+/*
+int IsMnemonicInLine(char *mnemonic, char *line)
+{
+	int 	start_index = 0,
+		mnemonic_length,	
+		line_length,
+		result;
+
+	mnemonic_length = strlen(mnemonic);
+	line_length = strlen(line);
+
+	while(start_index
+
+	
+	while((start_index + mnemonic_length <= line_length) 
+	//while(start_index < line_length
+	&& (result = strncmp(mnemonic, (line + start_index), mnemonic_length)) != 0)
+	{
+		start_index += 1;
+	}
+
+	if(result < 0)
+	{
+		return -1;
+	}
+	else if(result > 0)
+	{
+		return 1;
+	}
+
+	return 0;
+	
+}
+
+int BinarySearch(char *line)
 {
 	int 	search_index = ARRAY_SIZE/2,
+		index_of_first_letter = 0,
 		result;	
 	double rounded_shift_value = ARRAY_SIZE/4;
 
-	while((result = strcmp(find_this, instruction_set[search_index].mnemonic)) != MATCH)
+	//find index of first letter in line
+	while(start_index < strlen(line) && (line[start_index] < 'a' && line[start_index] > 'z')
+	{
+		index_of_first_letter += 1;
+	}
+
+	//while((result = strcmp(find_this, instruction_set[search_index].mnemonic)) != MATCH)
+	while((result = IsMnemonicInLine(instruction_set[search_index].mnemonic, line + start_index)) != MATCH)
 	{
 		if(search_index <= 0 || search_index >= ARRAY_SIZE - 1)
 		{
@@ -300,3 +344,4 @@ int BinarySearch(char *find_this)
 
 	return instruction_set[search_index].opcode;
 }
+*/
