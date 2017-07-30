@@ -2,7 +2,8 @@
  * Line Token Array Object for the 8080 Assembler				*
  * Pramuka Perera								*
  * 26 July, 2017								*
- * Line token array and corresponding functions to be used by assembler.c	*
+ * A place to put the opcode + operands in the assembly code			*
+ * + all the functions that do something useful with them			*
  ********************************************************************************/
 
 

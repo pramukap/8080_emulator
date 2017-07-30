@@ -2,7 +2,8 @@
  * 8080 Instruction Set Object for the 8080 Assembler				*
  * Pramuka Perera								*
  * 26 July, 2017								*
- * Instruction set and corresponding functions to be used by assembler.c	*
+ * 8080's instruction set:							*
+ * Used by the assembler to find the opcode for a given mnemonic	 	*
  ********************************************************************************/
 
 #ifndef INCLUDE
@@ -308,22 +309,18 @@ int IsMnemonicInLine(char *mnemonic, char *line)
 	return 0;
 	
 }
+*/
 
 int BinarySearch(char *line)
 {
 	int 	search_index = ARRAY_SIZE/2,
-		index_of_first_letter = 0,
+		//start_index = 0,
 		result;	
 	double rounded_shift_value = ARRAY_SIZE/4;
+	char* mnemonic = instruction_set[search_index].mnemonic;
 
-	//find index of first letter in line
-	while(start_index < strlen(line) && (line[start_index] < 'a' && line[start_index] > 'z')
-	{
-		index_of_first_letter += 1;
-	}
-
-	//while((result = strcmp(find_this, instruction_set[search_index].mnemonic)) != MATCH)
-	while((result = IsMnemonicInLine(instruction_set[search_index].mnemonic, line + start_index)) != MATCH)
+	while((result = strncmp(line, mnemonic, strlen(mnemonic))) != MATCH)
+	//while((result = IsMnemonicInLine(instruction_set[search_index].mnemonic, line + start_index)) != MATCH)
 	{
 		if(search_index <= 0 || search_index >= ARRAY_SIZE - 1)
 		{
@@ -340,8 +337,10 @@ int BinarySearch(char *line)
 		{
 			search_index = (int)((double)search_index + rounded_shift_value);
 		}
-	} 
+
+		mnemonic = instruction_set[search_index].mnemonic;
+	}
 
 	return instruction_set[search_index].opcode;
 }
-*/
+

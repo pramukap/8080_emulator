@@ -2,7 +2,8 @@
  * Buffer Objcet for 8080_Assembler					*
  * Pramuka Perera							*
  * July 28, 2017							*
- * Functions to be used with buffer objects created in assembler.c	*
+ * Place to store characters from the assembly code while they're	*
+ * being processed into useful chunks					*
  ************************************************************************/
 
 #ifndef INCLUDE

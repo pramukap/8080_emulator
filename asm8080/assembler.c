@@ -21,18 +21,8 @@
 
 #define	NEWLINE	0x0a
 
-/*
-inline void SafeMalloc(void **ptr, int amount_to_allocate, char *failure_message)
-{
-	if((*ptr = malloc(amount_to_allocate * sizeof(**ptr))) == NULL)
-	{
-		printf("%s", failure_message);
-	}
-} 
-*/
-
-FILE *assembly_file;
-FILE *object_file;
+FILE *assembly_file;	//input file
+FILE *object_file;	//output file
 
 node *labels;		//linked list of labels
 token *lines;		//array of line tokens
@@ -41,15 +31,13 @@ token *lines;		//array of line tokens
 int main(int argc, char *argv[])
 {
 	char 	c,
-		*assembly_code = NULL;
-	void	*temporary_ptr = NULL;
+		*assembly_code = NULL;	//container for assembly code drawn from file
+	void	*temporary_ptr = NULL;	
 	
-	int 	code_size 	= 1,
-		code_index 	= 0,
-		buffer_size 	= 1,
-		buffer_index 	= 0,
-		num_line_tokens	= 1,
-		line_index 	= 0;
+	int 	code_size 	= 1,	//# of characters in assembly code (including newlines, spaces, etc)
+		code_index 	= 0,	//index of current char of assembly code
+		num_line_tokens	= 1,	//number of tokens in the line array
+		line_index 	= 0;	//index of current line of assembler file
 
 	uint16_t input_address	= 0;	//base memory address at which program is being placed
 
@@ -97,7 +85,8 @@ int main(int argc, char *argv[])
 	
 		//if buffer contains label
 		if(c == ':')
-		{	
+		{
+			//add null terminator to string	
 			AddCharToBuffer(b, '\0');
 			
 			//while((b -> str)[0] < 'a' || (b -> str)[0] > 'z' || (b -> str)[0] != '\0')
@@ -112,16 +101,6 @@ int main(int argc, char *argv[])
 	
 			//reset buffer
 			b = NewBuffer();
-			/*
-			temporary_ptr = buffer;
-			if((buffer = malloc(sizeof(char))) == NULL)
-			{
-				printf("No more memory to store program. Please try again.\n");
-				free(temporary_ptr);
-				exit(0);
-			}		
-			*/
-		
 
 			code_index++;
 			continue;
@@ -130,7 +109,7 @@ int main(int argc, char *argv[])
 		//if at end of line
 		if(c == NEWLINE || c == ';')
 		{
-			
+			//add null terminator to string	
 			AddCharToBuffer(b, '\0');
 			
 			//while the first char in the buffer is not null or a lowercase letter	
@@ -141,37 +120,15 @@ int main(int argc, char *argv[])
 
 			
 			AddLineToken(b -> str, b -> length, line_index, &num_line_tokens, &lines);
-			//lines[line_index].line = buffer;
-			//lines[line_index].line_length = buffer_size;
 			
 			printf("Line Token #%i: %s\n", line_index, lines[line_index].line);
-
-			//add new token struct
-			/*temporary_ptr = lines;
-			if((lines = realloc(lines, (num_line_tokens + 1) * sizeof(token))) == NULL)
-			{
-				printf("No more memory to store program. Please try again.\n");
-				free(temporary_ptr);
-				exit(0);
-			}
-			lines[line_index + 1].line = NULL; 
-			*/
 
 			line_index++;
 			//num_line_tokens += 1;			
 
 			//reset buffer
 			b = NewBuffer();
-			/*
-			temporary_ptr = buffer;
-			if((buffer = malloc(sizeof(char))) == NULL)
-			{
-				printf("Insufficient space to allocate buffer.");
-				//free all allocated memory
-				exit(0);
-			}
-			*/	
-
+			
 			//if ; then go to new line	
 			while(c == ';' && assembly_code[code_index] != NEWLINE)
 			{
@@ -187,17 +144,11 @@ int main(int argc, char *argv[])
 		code_index++;
 	}
 
-	/*
-	SafeMalloc(&buffer, 2, "Buffer was not allocated");
-	buffer[0] = 'h';
-	buffer[1] = 'i';
-	printf("%s\n", buffer);
-	*/
-	//code_index =  (uint16_t)BinarySearch("mov e,a");
-	//printf("Result of Binary Search: %x\n", code_index);  
+	code_index =  (uint16_t)BinarySearch("mov e,a");
+	printf("Result of Binary Search: %x\n", code_index);  
 
 	//process operands
-		
+				
 	
 	//free memory
 	
