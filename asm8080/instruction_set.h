@@ -311,9 +311,11 @@ int IsMnemonicInLine(char *mnemonic, char *line)
 }
 */
 
+//returns unused opcode (0x20) if no instruction is found in the line
 int BinarySearch(char *line)
 {
 	int 	search_index = ARRAY_SIZE/2,
+		i,
 		//start_index = 0,
 		result;	
 	double rounded_shift_value = ARRAY_SIZE/4;
@@ -324,7 +326,7 @@ int BinarySearch(char *line)
 	{
 		if(search_index <= 0 || search_index >= ARRAY_SIZE - 1)
 		{
-			return -1;
+			return 0x20;
 		}
 
 		rounded_shift_value = ((double)rounded_shift_value / 2.0) + 0.5;
@@ -339,6 +341,12 @@ int BinarySearch(char *line)
 		}
 
 		mnemonic = instruction_set[search_index].mnemonic;
+	}
+
+	//clear mnemonic from line
+	for(i = 0; i < strlen(mnemonic); i++)
+	{
+		line[i] = ' ';
 	}
 
 	return instruction_set[search_index].opcode;

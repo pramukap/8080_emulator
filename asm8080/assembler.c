@@ -40,7 +40,9 @@ int main(int argc, char *argv[])
 		line_index 	= 0;	//index of current line of assembler file
 
 	uint16_t input_address	= 0;	//base memory address at which program is being placed
-
+	
+	uint8_t input_value;		//holds value that is to be placed in object code file
+	
 	buffer *b = NULL;
 
 	//obtain asm and object filenames
@@ -144,12 +146,19 @@ int main(int argc, char *argv[])
 		code_index++;
 	}
 
-	code_index =  (uint16_t)BinarySearch("mov e,a");
-	printf("Result of Binary Search: %x\n", code_index);  
+	//code_index =  (uint16_t)BinarySearch("mov e,a");
+	//printf("Result of Binary Search: %x\n", code_index);  
 
 	//process operands
-				
-	
+	for(line_index = 0; line_index < num_line_tokens; line_index++)
+	{
+		input_value = (uint8_t)BinarySearch(lines[line_index].line);
+		if(input_value != 0x20)
+		{
+			
+		}		
+	}
+
 	//free memory
 	
 	return 1;
