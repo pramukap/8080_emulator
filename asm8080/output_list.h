@@ -83,8 +83,15 @@ void AddOutputNode(int new_opcode, char *new_operand, output **head)
 
 void FreeOutputList(output **head)
 {
-	output 	*o = (*head) -> next,
+	output 	*o,
 		*temporary_ptr;
+
+	if(*head == NULL)
+	{
+		return;
+	}
+
+	o  = (*head) -> next;
 
 	//since we already have the next output, we can free this one
 	free(*head);

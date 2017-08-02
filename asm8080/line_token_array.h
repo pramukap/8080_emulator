@@ -23,6 +23,7 @@ typedef struct l_token
 }
 token;
 
+/*
 char *GetLineToken(int token_index, token *array)
 {
 	return array[token_index].line;
@@ -32,6 +33,7 @@ int GetTokenLength(int token_index, token *array)
 {
 	return array[token_index].line_length;
 }
+*/
 
 void AddLineToken(char* _line, int _line_length, int line_index, int *num_tokens, token **array)
 {
@@ -66,18 +68,20 @@ void AddLineToken(char* _line, int _line_length, int line_index, int *num_tokens
 
 void FreeLineTokens(int num_tokens, token **array)
 {
-	int i;
+	//int i = 0;
 
 	if(*array == NULL)
 	{
 		return;
 	}
 
+	/*
 	while(i < num_tokens)
 	{
 		free((*array)[i].line);
 		i++;
 	}
+	*/
 
 	free(*array);
 	*array = NULL;

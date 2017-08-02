@@ -186,6 +186,7 @@ int main(int argc, char *argv[])
 			switch(i.operand_2_type)
 			{
 				case 	D8:
+						
 						printf("%s\n", b -> str);
 						break;
 				case	D16:	

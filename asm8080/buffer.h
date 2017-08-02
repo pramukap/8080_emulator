@@ -50,7 +50,7 @@ void AddCharToBuffer(buffer *b,  char c)
 {
 	buffer *temporary_ptr = b;
 
-	if((b = realloc(b, ((b -> length) + 1) * sizeof(char))) == NULL)
+	if((b -> str = realloc(b -> str, ((b -> length) + 1) * sizeof(char))) == NULL)
 	{
 		printf("Insufficient memory to allocate a buffer.\n");
 		//free allocated memory
@@ -90,9 +90,14 @@ void ShiftBufferContentsLeft(buffer *b)
 	(b -> length)--;
 }
 
-void FreeBuffer(buffer *b)
+void FreeBuffer(buffer **b)
 {
-	free(b);
-	b = NULL;
+	if(*b == NULL)
+	{
+		return;
+	}	
+
+	free(*b);
+	*b = NULL;
 }
 
