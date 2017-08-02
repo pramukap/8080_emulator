@@ -27,7 +27,7 @@ FILE *assembly_file;	//input file
 
 node *labels;		//linked list of labels
 token *lines;		//array of line tokens
-
+output *final;		//space for storing hex string output prior to printing
 
 int main(int argc, char *argv[])
 {
@@ -49,12 +49,22 @@ int main(int argc, char *argv[])
 	
 	void	*temporary_ptr = NULL;	
 	
+	/*
 	//obtain asm and object filenames
 	if(argc < 3)
 	{
 		printf("You didn't give me an assembly file and a target file.\nI'm gonna leave now :P\n");
 		exit(0);
 	}
+	*/
+
+	//obtain asm filename
+	if(argc < 2)
+	{
+		printf("You didn't give me an assembly file.\nI'm gonna leave now :P\n");
+		exit(0);
+	}
+
 
 	assembly_file = fopen(argv[1], "r");
 	//object_file = fopen(argv[2], "w");
@@ -182,17 +192,22 @@ int main(int argc, char *argv[])
 			}
 			
 
+			AddOutputNode(i.opcode, b -> str, &final); 
+
+			/*
 			//find and process operand
-			switch(i.operand_2_type)
+			switch(i.operand_type)
 			{
 				case 	D8:
-						
+						AddOutputNode(i.opcode, b -> str, &final); 
 						printf("%s\n", b -> str);
 						break;
 				case	D16:	
+						AddOutputNode(i.opcode, b -> str, &final);
 						printf("%c%c\n%c%c\n", (b -> str)[2], (b -> str)[3], (b -> str)[0], (b -> str)[1]);
 						break;
 				case	ADDR:
+						AddOutputNode(i.opcode, b -> str, &final);
 						printf("%c%c\n%c%c\n", (b -> str)[2], (b -> str)[3], (b -> str)[0], (b -> str)[1]);
 						break;
 				case	R:
@@ -202,7 +217,7 @@ int main(int argc, char *argv[])
 						//printf("\n"); 
 						break;
 			};
-
+			*/
 			
 		}
 

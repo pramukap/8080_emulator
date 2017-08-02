@@ -36,7 +36,7 @@ typedef struct instruction_information
 	char* mnemonic;
 	uint8_t opcode;
 	uint8_t operand_bytes;
-	operand operand_2_type;
+	operand operand_type;
 }
 instruction;
 

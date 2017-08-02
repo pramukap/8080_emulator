@@ -64,8 +64,16 @@ void AddOutputNode(int new_opcode, char *new_operand, output **head)
 	}
 
 	new_node -> opcode = new_opcode;
-	new_node -> operand = new_operand;
 	new_node -> next = NULL;
+	
+	new_node -> operand = NULL;
+	//allocate space for new_operand including null terminator
+	if((new_node -> operand = malloc((strlen(new_operand) + 1) * sizeof(char))) == NULL)
+	{
+		printf("Failed to allocate string.\n");
+		exit(0);
+	}
+	strcpy(new_node -> operand, new_operand);
 	
 	if(*head == NULL)
 	{
