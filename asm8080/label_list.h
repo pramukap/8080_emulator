@@ -17,13 +17,14 @@
 typedef struct list_node
 {
 	char label[5];
-	uint16_t address;
+	int value;
+	int line_index;
 	struct list_node *next_node;
 	struct list_node *last_node;
 }
 node;
 
-void AddLabelNode(char *new_label, uint16_t new_address, node **head)
+void AddLabelNode(char *new_label, int index, node **head)
 {
 	node 	*new_node;
 
@@ -34,7 +35,8 @@ void AddLabelNode(char *new_label, uint16_t new_address, node **head)
 	}
 
 	strncpy(new_node -> label, new_label, sizeof(new_node -> label));	
-	new_node -> address = new_address;
+	new_node -> value = 0x10000;
+	new_node -> line_index = index; 
 	new_node -> next_node = NULL;
 	new_node -> last_node = NULL;	
 
@@ -50,7 +52,25 @@ void AddLabelNode(char *new_label, uint16_t new_address, node **head)
 	(*head) -> last_node = new_node;
 }
 
-uint32_t FindLabelValue(char *label_of_address, node *head)
+int AssignLabelValue(int line_index, int value_to_assign, node *head)
+{
+	node *label = head;
+
+	while(label != NULL)
+	{
+		if(line_index == label -> line_index)
+		{
+			label -> value = value_to_assign;
+		}
+
+		label = label -> next_node;
+		return 1;
+	}
+
+	return 0;
+}
+
+int FindLabelValue(char *label_of_address, node *head)
 {
 	node *current_node = head;
 	
@@ -58,7 +78,7 @@ uint32_t FindLabelValue(char *label_of_address, node *head)
 	{
 		if(strcmp(current_node -> label, label_of_address) == 0)
 		{
-			return (current_node -> address);
+			return (current_node -> value);
 		}
 
 		current_node = current_node -> next_node; 

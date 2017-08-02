@@ -1,12 +1,9 @@
 In file included from assembler.c:19:0:
 line_token_array.h: In function ‘AddLineToken’:
-line_token_array.h:37:9: warning: unused variable ‘temporary_ptr’ [-Wunused-variable]
+line_token_array.h:38:9: warning: unused variable ‘temporary_ptr’ [-Wunused-variable]
   token *temporary_ptr = *array;
          ^
 assembler.c: In function ‘main’:
-assembler.c:50:3: warning: unused variable ‘buffer_index’ [-Wunused-variable]
-   buffer_index  = 0,
-   ^
-assembler.c:49:3: warning: unused variable ‘buffer_size’ [-Wunused-variable]
-   buffer_size  = 1,
-   ^
+assembler.c:44:10: warning: unused variable ‘input_value’ [-Wunused-variable]
+  uint8_t input_value;  //holds value that is to be placed in object code file
+          ^

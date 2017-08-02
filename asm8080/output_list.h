@@ -1,0 +1,100 @@
+/********************************************************************************
+ * 8080 Output List Object for the 8080 Assembler				*
+ * Pramuka Perera								*
+ * 26 July, 2017								*
+ * 8080's instruction set:							*
+ * Used by the assembler to store the final output values prior to actual output*
+ ********************************************************************************/
+
+/*
+typedef struct output_node
+{
+	int opcode;
+	char *operand;
+	struct output_node *next;
+}
+ouput;
+
+
+typedef struct output_head_node
+{
+	int opcode;
+	char *operand;
+	output *next;
+	output *last;
+}
+output_head;
+*/
+
+typedef struct output_node
+{
+	int opcode;
+	char *operand;
+	struct output_node *next;
+	struct output_node *last;
+}
+output;
+
+void AddOutputNode(int new_opcode, char *new_operand, output **head)
+{
+	output *new_node;
+
+	/*
+	if(*head == NULL)
+	{
+		if((*head = malloc(sizeof(output_head))) == NULL)
+		{
+			printf("Failed to allocate output list.\n");
+			exit(0);
+		}
+		
+		*head -> opcode = new_opcode;
+		*head -> operand = new_operand;
+		*head -> next = NULL;
+		*head -> last = *head;	
+
+		return;
+	}
+	*/
+
+	if((new_node = malloc(sizeof(output))) == NULL)
+	{
+		printf("Failed to allocate output node.\n");
+		exit(0);
+	}
+
+	new_node -> opcode = new_opcode;
+	new_node -> operand = new_operand;
+	new_node -> next = NULL;
+	
+	if(*head == NULL)
+	{
+		new_node -> last = *head;
+		*head = new_node;
+		
+		return;
+	}	
+
+	((*head) -> last) -> next = new_node;
+	(*head) -> last = new_node; 
+}
+
+//void ReplaceLabelWithValue(
+
+void FreeOutputList(output **head)
+{
+	output 	*o = (*head) -> next,
+		*temporary_ptr;
+
+	//since we already have the next output, we can free this one
+	free(*head);
+	*head = NULL;
+
+	while(o != NULL)
+	{
+		temporary_ptr = o -> next;
+		free(o -> operand);
+		free(o);
+		o = temporary_ptr;
+	}
+}

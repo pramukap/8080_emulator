@@ -87,6 +87,7 @@ void ShiftBufferContentsLeft(buffer *b)
 	}
 
 	(b -> str)[(b -> length) - 1] = '\0';
+	(b -> length)--;
 }
 
 void FreeBuffer(buffer *b)

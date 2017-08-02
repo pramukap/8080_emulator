@@ -47,7 +47,7 @@ void AddLineToken(char* _line, int _line_length, int line_index, int *num_tokens
 
 		(*array)[line_index].line = _line;
 		(*array)[line_index].line_length = _line_length;
-		*num_tokens += 1;
+		//*num_tokens += 1;
 
 		return;
 	}
@@ -61,7 +61,7 @@ void AddLineToken(char* _line, int _line_length, int line_index, int *num_tokens
 	
 	(*array)[line_index].line = _line;
 	(*array)[line_index].line_length = _line_length;
-	*num_tokens += 1;
+	//*num_tokens += 1;
 }
 
 void FreeLineTokens(int num_tokens, token **array)
