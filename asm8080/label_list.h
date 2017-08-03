@@ -14,21 +14,21 @@
 	#define INCLUDE 
 #endif
 
-typedef struct list_node
+typedef struct label_node
 {
-	char label[5];
+	char label[6];
 	int value;
 	int line_index;
-	struct list_node *next_node;
-	struct list_node *last_node;
+	struct label_node *next_node;
+	struct label_node *last_node;
 }
-node;
+label;
 
-void AddLabelNode(char *new_label, int index, node **head)
+void AddLabelNode(char *new_label, int index, label **head)
 {
-	node 	*new_node;
+	label *new_node;
 
-	if((new_node = malloc(sizeof(node))) == NULL)
+	if((new_node = malloc(sizeof(label))) == NULL)
 	{
 		printf("Couldn't allocate space to save a label node.");
 		exit(0);
@@ -52,27 +52,97 @@ void AddLabelNode(char *new_label, int index, node **head)
 	(*head) -> last_node = new_node;
 }
 
-int AssignLabelValue(int line_index, int value_to_assign, node *head)
+int AssignLabelValue(int line_index, int value_to_assign, label *head)
 {
-	node *label = head;
+	label *label_node = head;
 
-	while(label != NULL)
+	while(label_node != NULL)
 	{
-		if(line_index == label -> line_index)
+		if(line_index == label_node -> line_index)
 		{
-			label -> value = value_to_assign;
+			label_node -> value = value_to_assign;
+			return 1;
 		}
 
-		label = label -> next_node;
-		return 1;
+		label_node = label_node -> next_node;
 	}
 
 	return 0;
 }
 
-int FindLabelValue(char *label_of_address, node *head)
+label FindLabelInOperand(char *operand, label *head)
 {
-	node *current_node = head;
+	int	i,
+		label_length,
+		result,
+		operand_length = strlen(operand),
+		last_operand_index = strlen(operand) - 1;
+
+	char	char_after_label;
+		//*front_buffer,
+	 	//*back_buffer;
+
+	label 	*label_node = head,
+		no_label_found = {"no l", 0x10000, -1, NULL, NULL}; 
+
+	while(label_node != NULL)
+	{
+		label_length = strlen(label_node -> label);
+		
+		for(i = 0; i + label_length < operand_length; i++)
+		{
+			if((result = strncmp(operand + i, label_node -> label, label_length)) == 0)
+			{
+				//want to make sure the label I have identified is the correct label, and not one that is contained in another
+				//example: Identified Label: "b", Actual Label: "butt"
+				if(i + label_length <= last_operand_index)
+				{
+					char_after_label = (operand + i + label_length)[0];
+				
+					/*	
+					if( char_after_label < '0' 
+					|| (char_after_label > 9 && char_after_label < 'a') 
+					||  char_after_label > 'z') 
+					*/
+					if(char_after_label == ' ')
+					{
+						return *label_node;
+					}
+				}
+				else
+				{
+					return *label_node;
+				}
+				
+				//trying to replace label with value string
+				/*
+				front_buffer = calloc((i+1) * sizeof(char));
+				//front_buffer[i] = '\0';
+
+				back_buffer = calloc((operand_length - label_length - i + 1) * sizeof(char));
+				
+				//copy everything before the label into front_buffer
+				strncpy(front_buffer, operand, i);
+				//copy everything after the label into this buffer
+				strcpy(back_buffer, operand + i + label_length); 
+
+				
+				operand_length = strlen(operand);
+				i = 0;
+				*/
+			}
+		}
+
+		label_node = label_node -> next_node;
+	}
+
+	return no_label_found;
+}
+
+/*
+int FindLabelValue(char *label_of_address, label *head)
+{
+	label *current_node = head;
 	
 	while(current_node)
 	{
@@ -86,10 +156,11 @@ int FindLabelValue(char *label_of_address, node *head)
 
 	return 0x10000;	
 }
+*/
 
-void FreeLabelList(node **head)
+void FreeLabelList(label **head)
 {
-	node 	*current_node,
+	label 	*current_node,
 		*next_node;
 
 	if(*head == NULL)

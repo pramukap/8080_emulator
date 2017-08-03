@@ -20,6 +20,13 @@
 #define MATCH 	0
 #define AFTER	1
 
+#define	NONE	0
+#define	R	1
+#define	RP	2
+#define	D8	3
+#define	D16	4
+#define	ADDR	5
+/*
 typedef enum operand_type	
 {
 	NONE,
@@ -30,20 +37,21 @@ typedef enum operand_type
 	ADDR
 }
 operand;
+*/
 
 typedef struct instruction_information
 {
 	char* mnemonic;
 	uint8_t opcode;
 	uint8_t operand_bytes;
-	operand operand_type;
+	int operand_type;
 }
 instruction;
 
 
 instruction instruction_set[ARRAY_SIZE] =
 {
-	/*00*/	{"aci ", 0xce, 1, D8},
+	/*00*/	{"aci", 0xce, 1, D8},
 		{"adc a", 0x8f, 0, NONE},
 	/*02*/	{"adc b", 0x88, 0, NONE},
 		{"adc c", 0x89, 0, NONE},
@@ -60,7 +68,7 @@ instruction instruction_set[ARRAY_SIZE] =
 	/*0e*/	{"add h", 0x84, 0, NONE},
 		{"add l", 0x85, 0, NONE},
 	/*10*/	{"add m", 0x86, 0, NONE},
-		{"adi ", 0xc6, 1, D8},
+		{"adi", 0xc6, 1, D8},
 	/*12*/	{"ana a", 0xa7, 0, NONE},
 		{"ana b", 0xa0, 0, NONE},
 	/*14*/	{"ana c", 0xa1, 0, NONE},
@@ -69,12 +77,12 @@ instruction instruction_set[ARRAY_SIZE] =
 		{"ana h", 0xa4, 0, NONE},
 	/*18*/	{"ana l", 0xa5, 0, NONE},
 		{"ana m", 0xa6, 0, NONE},
-	/*1a*/	{"ani ", 0xe6, 1, D8},
-		{"call ", 0xcd, 2, ADDR},
-	/*1c*/	{"cc ", 0xdc, 2, ADDR},
-		{"cm ", 0xfc, 2, ADDR},
-	/*1e*/	{"cma ", 0x2f, 0, NONE},
-		{"cmc ", 0x3f, 0, NONE},
+	/*1a*/	{"ani", 0xe6, 1, D8},
+		{"call", 0xcd, 2, ADDR},
+	/*1c*/	{"cc", 0xdc, 2, ADDR},
+		{"cm", 0xfc, 2, ADDR},
+	/*1e*/	{"cma", 0x2f, 0, NONE},
+		{"cmc", 0x3f, 0, NONE},
 	/*20*/	{"cmp a", 0xbf, 0, NONE},
 		{"cmp b", 0xb8, 0, NONE},
 	/*22*/	{"cmp c", 0xb9, 0, NONE},
@@ -83,13 +91,13 @@ instruction instruction_set[ARRAY_SIZE] =
 		{"cmp h", 0xbc, 0, NONE},
 	/*26*/	{"cmp l", 0xbd, 0, NONE},
 		{"cmp m", 0xbe, 0, NONE},
-	/*28*/	{"cnc ", 0xd4, 2, ADDR},
-		{"cnz ", 0xc4, 2, ADDR},
-	/*2a*/	{"cp ", 0xf4, 2, ADDR},
-		{"cpe ", 0xec, 2, ADDR},
-	/*2c*/	{"cpi ", 0xfe, 1, D8},
-		{"cpo ", 0xe4, 2, ADDR},
-	/*2e*/	{"cz ", 0xcc, 2, ADDR},
+	/*28*/	{"cnc", 0xd4, 2, ADDR},
+		{"cnz", 0xc4, 2, ADDR},
+	/*2a*/	{"cp", 0xf4, 2, ADDR},
+		{"cpe", 0xec, 2, ADDR},
+	/*2c*/	{"cpi", 0xfe, 1, D8},
+		{"cpo", 0xe4, 2, ADDR},
+	/*2e*/	{"cz", 0xcc, 2, ADDR},
 		{"daa", 0x27, 0, NONE},
 	/*30*/	{"dad b", 0x09, 0, NONE},
 		{"dad d", 0x19, 0, NONE},
@@ -110,7 +118,7 @@ instruction instruction_set[ARRAY_SIZE] =
 	/*40*/	{"di", 0xf3, 0, NONE},
 		{"ei", 0xfb, 0, NONE},
 	/*42*/	{"hlt", 0x76, 0, NONE},
-		{"in ", 0xdb, 1, D8},
+		{"in", 0xdb, 1, D8},
 	/*44*/	{"inr a", 0x3c, 0, NONE},
 		{"inr b", 0x04, 0, NONE},
 	/*46*/	{"inr c", 0x0c, 0, NONE},
@@ -123,23 +131,23 @@ instruction instruction_set[ARRAY_SIZE] =
 		{"inx d", 0x13, 0, NONE},
 	/*4e*/	{"inx h", 0x23, 0, NONE},
 		{"inx sp", 0x33, 0, NONE},
-	/*50*/	{"jc ", 0xda, 2, ADDR},
-		{"jm ", 0xfa, 2, ADDR},
-	/*52*/	{"jmp ", 0xc3, 2, ADDR},
-		{"jnc ", 0xd2, 2, ADDR},
-	/*54*/	{"jnz ", 0xc2, 2, ADDR},
-		{"jp ", 0xf2, 2, ADDR},
-	/*56*/	{"jpe ", 0xea, 2, ADDR},
-		{"jpo ", 0xe2, 2, ADDR},
-	/*58*/	{"jz ", 0xca, 2, ADDR},
-		{"lda ", 0x3a, 2, ADDR},
+	/*50*/	{"jc", 0xda, 2, ADDR},
+		{"jm", 0xfa, 2, ADDR},
+	/*52*/	{"jmp", 0xc3, 2, ADDR},
+		{"jnc", 0xd2, 2, ADDR},
+	/*54*/	{"jnz", 0xc2, 2, ADDR},
+		{"jp", 0xf2, 2, ADDR},
+	/*56*/	{"jpe", 0xea, 2, ADDR},
+		{"jpo", 0xe2, 2, ADDR},
+	/*58*/	{"jz", 0xca, 2, ADDR},
+		{"lda", 0x3a, 2, ADDR},
 	/*5a*/	{"ldax b", 0x0a, 0, NONE},
 		{"ldax d", 0x1a, 0, NONE},
-	/*5c*/	{"lhld ", 0x2a, 2, ADDR},
-		{"lxi b,", 0x01, 2, D16},
-	/*5e*/	{"lxi d,", 0x11, 2, D16},
-		{"lxi h,", 0x21, 2, D16},
-	/*60*/	{"lxi sp,", 0x31, 2, D16},
+	/*5c*/	{"lhld", 0x2a, 2, ADDR},
+		{"lxi b", 0x01, 2, D16},
+	/*5e*/	{"lxi d", 0x11, 2, D16},
+		{"lxi h", 0x21, 2, D16},
+	/*60*/	{"lxi sp", 0x31, 2, D16},
 		{"mov a,a", 0x7f, 0, NONE},
 	/*62*/	{"mov a,b", 0x78, 0, NONE},
 		{"mov a,c", 0x79, 0, NONE},
@@ -203,14 +211,14 @@ instruction instruction_set[ARRAY_SIZE] =
 		{"mov m,e", 0x73, 0, NONE},
 	/*9e*/	{"mov m,h", 0x74, 0, NONE},
 		{"mov m,l", 0x75, 0, NONE},
-	/*a0*/	{"mvi a,", 0x3e, 1, D8},
-		{"mvi b,", 0x06, 1, D8},
-	/*a2*/	{"mvi c,", 0x0e, 1, D8},
-		{"mvi d,", 0x16, 1, D8},
-	/*a4*/	{"mvi e,", 0x1e, 1, D8},
-		{"mvi h,", 0x26, 1, D8},
-	/*a6*/	{"mvi l,", 0x2e, 1, D8},
-		{"mvi m,", 0x36, 1, D8},
+	/*a0*/	{"mvi a", 0x3e, 1, D8},
+		{"mvi b", 0x06, 1, D8},
+	/*a2*/	{"mvi c", 0x0e, 1, D8},
+		{"mvi d", 0x16, 1, D8},
+	/*a4*/	{"mvi e", 0x1e, 1, D8},
+		{"mvi h", 0x26, 1, D8},
+	/*a6*/	{"mvi l", 0x2e, 1, D8},
+		{"mvi m", 0x36, 1, D8},
 	/*a8*/	{"nop", 0x00, 0, NONE},
 		{"ora a", 0xb7, 0, NONE},
 	/*aa*/	{"ora b", 0xb0, 0, NONE},
@@ -220,8 +228,8 @@ instruction instruction_set[ARRAY_SIZE] =
 	/*ae*/	{"ora h", 0xb4, 0, NONE},
 		{"ora l", 0xb5, 0, NONE},
 	/*b0*/	{"ora m", 0xb6, 0, NONE},
-		{"ori ", 0xf6, 1, D8},
-	/*b2*/	{"out ", 0xd3, 1, D8},
+		{"ori", 0xf6, 1, D8},
+	/*b2*/	{"out", 0xd3, 1, D8},
 		{"pchl", 0xe9, 0, NONE},
 	/*b4*/	{"pop b", 0xc1, 0, NONE},
 		{"pop d", 0xd1, 0, NONE},
@@ -260,10 +268,10 @@ instruction instruction_set[ARRAY_SIZE] =
 	/*d6*/	{"sbb h", 0x9d, 0, NONE},
 		{"sbb l", 0x9e, 0, NONE},
 	/*d8*/	{"sbb m", 0x9f, 0, NONE},
-		{"sbi ", 0xde, 1, D8},
+		{"sbi", 0xde, 1, D8},
 	/*da*/	{"shld", 0x22, 2, ADDR},
 		{"sphl", 0xf9, 0, NONE},
-	/*dc*/	{"sta ", 0x32, 2, ADDR},
+	/*dc*/	{"sta", 0x32, 2, ADDR},
 		{"stax b", 0x02, 0, NONE},
 	/*de*/	{"stax d", 0x12, 0, NONE},
 		{"stc", 0x37, 0, NONE},
@@ -275,7 +283,7 @@ instruction instruction_set[ARRAY_SIZE] =
 		{"sub h", 0x94, 0, NONE},
 	/*e6*/	{"sub l", 0x95, 0, NONE},
 		{"sub m", 0x96, 0, NONE},
-	/*e8*/	{"sui ", 0xd6, 1, D8},
+	/*e8*/	{"sui", 0xd6, 1, D8},
 		{"xchg", 0xeb, 0, NONE},
 	/*ea*/	{"xra a", 0xaf, 0, NONE},
 		{"xra b", 0xa8, 0, NONE},
@@ -285,7 +293,7 @@ instruction instruction_set[ARRAY_SIZE] =
 		{"xra h", 0xac, 0, NONE},
 	/*f0*/	{"xra l", 0xad, 0, NONE},
 		{"xra m", 0xae, 0, NONE},
-	/*f2*/	{"xri ", 0xee, 1, D8},
+	/*f2*/	{"xri", 0xee, 1, D8},
 		{"xthl", 0xe3, 0, NONE}
 };
 
@@ -301,14 +309,20 @@ instruction BinarySearch(char *line)
 	double rounded_shift_value = ARRAY_SIZE/4;
 	char* mnemonic;
 
+	/*
 	mnemonic = instruction_set[search_index].mnemonic;
 	mnemonic_length = strlen(mnemonic);
 	line_length = strlen(line);
+	*/
 
 	instruction no_instruction_found = {"no instruction found", 0x20, 0, NONE};
 
 	while(search_index >= 0 && search_index <= ARRAY_SIZE - 1)
 	{
+		mnemonic = instruction_set[search_index].mnemonic;
+		mnemonic_length = strlen(mnemonic);
+		line_length = strlen(line);
+
 		//if there is a match, we have to make sure it is not a case such as -> Match Candidate: JM, Expected: JMP	
 		if((result = strncmp(line, mnemonic, mnemonic_length)) == MATCH)
 		{
@@ -348,9 +362,7 @@ instruction BinarySearch(char *line)
 			search_index = (int)((double)search_index + rounded_shift_value);
 		}
 
-		mnemonic = instruction_set[search_index].mnemonic;
-		mnemonic_length = strlen(mnemonic);
-		line_length = strlen(line);
+		
 	}
 
 	

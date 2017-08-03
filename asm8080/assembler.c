@@ -25,7 +25,7 @@
 FILE *assembly_file;	//input file
 //FILE *object_file;	//output file
 
-node *labels;		//linked list of labels
+label *labels;		//linked list of labels
 token *lines;		//array of line tokens
 output *final;		//space for storing hex string output prior to printing
 
@@ -34,7 +34,8 @@ int main(int argc, char *argv[])
 	char 	c,
 		*assembly_code = NULL;	//container for assembly code drawn from file
 	
-	int 	code_size 	= 1,	//# of characters in assembly code (including newlines, spaces, etc)
+	int 	j,
+		code_size 	= 1,	//# of characters in assembly code (including newlines, spaces, etc)
 		code_index 	= 0,	//index of current char of assembly code
 		num_line_tokens	= 0,	//number of tokens in the line array
 		line_index 	= 0;	//index of current line of assembler file
@@ -44,7 +45,9 @@ int main(int argc, char *argv[])
 	uint8_t input_value;		//holds value that is to be placed in object code file
 
 	buffer *b = NULL;
+	output *o = NULL;
 
+	label l;
 	instruction i;
 	
 	void	*temporary_ptr = NULL;	
@@ -90,6 +93,8 @@ int main(int argc, char *argv[])
 		code_size++;
 	}
 
+	//printf("Done storing code\n");
+
 	//process code-buffer to produce (array of line tokens) and (linked list of labels)
 	code_index = 0;
 
@@ -111,7 +116,27 @@ int main(int argc, char *argv[])
 			{
 				ShiftBufferContentsLeft(b);
 			}
-		
+					
+			
+			//clear ' ' from end of label
+			j = (b -> length) - 1;
+			
+			while(j >= 0)
+			{
+				if((b -> str)[j] == ' ')
+				{
+					(b -> str)[j] = '\0';
+				}
+
+				j--;
+			} 
+			
+
+			if(strlen(b -> str) > 5)
+			{
+				//printf("Warning: %s is greater than 5 characters\n", b -> str);
+			}
+					
 			AddLabelNode(b -> str, line_index, &labels);			
 			//printf("Label: %s\n", (labels -> last_node) -> label);
 	
@@ -160,6 +185,8 @@ int main(int argc, char *argv[])
 		code_index++;
 	}
 
+	//printf("Done processing code into labels and lines\n");
+
 	//code_index =  (uint16_t)BinarySearch("mov e,a");
 	//printf("Result of Binary Search: %x\n", code_index);  
 
@@ -177,22 +204,23 @@ int main(int argc, char *argv[])
 
 		//find instruction
 		i = BinarySearch(b -> str);
-		printf("%02x\n", i.opcode);
+
 		//putw(i.opcode, object_file);		
 
 		//clear away empty spaces to reach possible operands	
 		if(i.opcode != 0x20)
 		{
 			//add space occupied by instruction to location_counter
+			//printf("%02x\n", i.opcode);
 			location_counter += (i.operand_bytes + 1);
 			
-			while((b -> str)[0] == ' ')
+			while((b -> str)[0] == ' ' || (b -> str)[0] == ',')
 			{
 				ShiftBufferContentsLeft(b);
 			}
 			
 
-			AddOutputNode(i.opcode, b -> str, &final); 
+			AddOutputNode(i.opcode, b -> str, i.operand_type, &final); 
 
 			/*
 			//find and process operand
@@ -219,11 +247,53 @@ int main(int argc, char *argv[])
 			};
 			*/
 			
-		}
-
-			
+		}	
 	}
 
+	//printf("Done processing lines and finding label values.\n");
+
+	//process labels
+	o = final;
+
+	while(o != NULL)
+	{
+		l = FindLabelInOperand(o -> operand, labels); 
+		
+		if(l.value != 0x10000)
+		{
+			o -> final_operand = l.value;
+		}
+		else
+		{
+			o -> final_operand = strtol(o -> operand, NULL, 16);
+		}
+	
+		printf("%02x\n", o -> opcode);
+		
+		switch(o -> operand_type)
+			{
+				case 	3:
+						printf("%02x\n", o ->final_operand);
+						break;
+				case	4:	
+				case	5:
+						j = (o -> final_operand) & 0x0FF;
+						printf("%02x\n", j);
+		
+						j = (o -> final_operand) & 0x0FF00;
+						printf("%02x\n", j);
+						break;
+				case	R:
+				case	RP:
+				case 	NONE: 
+					default:
+						//printf("\n"); 
+						break;
+			};
+		
+		o = o -> next;
+	}		
+	
 	printf("fi\n");
 
 	//free memory

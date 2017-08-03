@@ -1,6 +1,8 @@
 HELLO_WORLD:	mvi h, 12; 0,1
-		jmp 0006 ; 2,3,4
-		nop ; 5
-		nop ; 6
-		nop ; 7
-		hlt ; 8
+		adi 0 ;2,3
+		jmp LABEL ; 4,5,6
+L1:		adi 1 ; 7
+		nop ; 8
+LABEL:		nop ; 9
+		jz L1 ; a,b,c
+		hlt ;d	

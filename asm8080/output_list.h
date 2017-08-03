@@ -6,11 +6,21 @@
  * Used by the assembler to store the final output values prior to actual output*
  ********************************************************************************/
 
+#ifndef INCLUDE
+	#include <stdlib.h>
+	#include <stdio.h>
+	#include <stdint.h>
+	#include <string.h>
+
+	#define INCLUDE
+#endif
+
 /*
 typedef struct output_node
 {
 	int opcode;
 	char *operand;
+	int final_operand;
 	struct output_node *next;
 }
 ouput;
@@ -30,12 +40,14 @@ typedef struct output_node
 {
 	int opcode;
 	char *operand;
+	int final_operand;
+	int operand_type;
 	struct output_node *next;
 	struct output_node *last;
 }
 output;
 
-void AddOutputNode(int new_opcode, char *new_operand, output **head)
+void AddOutputNode(int new_opcode, char *new_operand, int new_operand_type, output **head)
 {
 	output *new_node;
 
@@ -65,6 +77,8 @@ void AddOutputNode(int new_opcode, char *new_operand, output **head)
 
 	new_node -> opcode = new_opcode;
 	new_node -> next = NULL;
+	new_node -> final_operand = 0x10000;
+	new_node -> operand_type = new_operand_type;
 	
 	new_node -> operand = NULL;
 	//allocate space for new_operand including null terminator
@@ -77,8 +91,8 @@ void AddOutputNode(int new_opcode, char *new_operand, output **head)
 	
 	if(*head == NULL)
 	{
+		*head = new_node;	
 		new_node -> last = *head;
-		*head = new_node;
 		
 		return;
 	}	

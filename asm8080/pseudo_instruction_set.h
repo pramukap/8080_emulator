@@ -6,6 +6,15 @@
  * Pseudo-instructions help the assembler put the program into the computer	*
  ********************************************************************************/
 
+#ifndef INCLUDE
+	#include <stdlib.h>
+	#include <stdio.h>
+	#include <stdint.h>
+	#include <string.h>
+
+	#define INCLUDE
+#endif
+
 typdef struct pseudo_instruction
 {
 	char *mnemonic;
