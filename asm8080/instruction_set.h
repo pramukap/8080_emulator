@@ -12,6 +12,7 @@
 	#include <stdint.h>
 	#include <string.h>
 
+
 	#define INCLUDE
 #endif
 
@@ -300,20 +301,15 @@ instruction instruction_set[ARRAY_SIZE] =
 //returns unused opcode (0x20) if no instruction is found in the line
 instruction BinarySearch(char *line)
 {
-	int 	search_index = ARRAY_SIZE/2,
-		i,
-		//start_index = 0,
-		result,
-		line_length,
-		mnemonic_length;	
-	double rounded_shift_value = ARRAY_SIZE/4;
-	char* mnemonic;
+	int 	i,					
+		result,					//indicates if binary search should go look ahead or behind of current search_index
+		mnemonic_length,
+		line_length = strlen(line),
+		search_index = ARRAY_SIZE/2;		//index of instruction_set to check
+	
+	double rounded_shift_value = ARRAY_SIZE/2;	//helps to calculate next search index
 
-	/*
-	mnemonic = instruction_set[search_index].mnemonic;
-	mnemonic_length = strlen(mnemonic);
-	line_length = strlen(line);
-	*/
+	char* mnemonic;
 
 	instruction no_instruction_found = {"no instruction found", 0x20, 0, NONE};
 
@@ -321,11 +317,10 @@ instruction BinarySearch(char *line)
 	{
 		mnemonic = instruction_set[search_index].mnemonic;
 		mnemonic_length = strlen(mnemonic);
-		line_length = strlen(line);
 
-		//if there is a match, we have to make sure it is not a case such as -> Match Candidate: JM, Expected: JMP	
 		if((result = strncmp(line, mnemonic, mnemonic_length)) == MATCH)
 		{
+			//if there is a match, we have to make sure it is not a case such as -> Match Candidate: JM, Expected: JMP	
 			if(line_length > mnemonic_length)
 			{
 				if(line[mnemonic_length] < 'a' || line[mnemonic_length] > 'z')
@@ -351,6 +346,8 @@ instruction BinarySearch(char *line)
 			}
 		}
 
+		//takes distance to shift away from current search_index, and adds 0.5 to prepare for rounding
+		//rounding occurs during type conversion from double to int later on	
 		rounded_shift_value = ((double)rounded_shift_value / 2.0) + 0.5;
 	
 		if(result < 0)
@@ -360,12 +357,8 @@ instruction BinarySearch(char *line)
 		else
 		{
 			search_index = (int)((double)search_index + rounded_shift_value);
-		}
-
-		
+		}		
 	}
-
-	
 
 	return no_instruction_found;
 }

@@ -15,33 +15,12 @@
 	#define INCLUDE
 #endif
 
-/*
 typedef struct output_node
 {
 	int opcode;
-	char *operand;
-	int final_operand;
-	struct output_node *next;
-}
-ouput;
-
-
-typedef struct output_head_node
-{
-	int opcode;
-	char *operand;
-	output *next;
-	output *last;
-}
-output_head;
-*/
-
-typedef struct output_node
-{
-	int opcode;
-	char *operand;
-	int final_operand;
-	int operand_type;
+	char *operand;			//stores the unprocessed operand
+	int final_operand;		//stores the final numerical value of the operand
+	int operand_type;		//data byte, data word, or address
 	struct output_node *next;
 	struct output_node *last;
 }
@@ -51,24 +30,6 @@ void AddOutputNode(int new_opcode, char *new_operand, int new_operand_type, outp
 {
 	output *new_node;
 
-	/*
-	if(*head == NULL)
-	{
-		if((*head = malloc(sizeof(output_head))) == NULL)
-		{
-			printf("Failed to allocate output list.\n");
-			exit(0);
-		}
-		
-		*head -> opcode = new_opcode;
-		*head -> operand = new_operand;
-		*head -> next = NULL;
-		*head -> last = *head;	
-
-		return;
-	}
-	*/
-
 	if((new_node = malloc(sizeof(output))) == NULL)
 	{
 		printf("Failed to allocate output node.\n");
@@ -76,11 +37,11 @@ void AddOutputNode(int new_opcode, char *new_operand, int new_operand_type, outp
 	}
 
 	new_node -> opcode = new_opcode;
-	new_node -> next = NULL;
 	new_node -> final_operand = 0x10000;
 	new_node -> operand_type = new_operand_type;
-	
+	new_node -> next = NULL;
 	new_node -> operand = NULL;
+	
 	//allocate space for new_operand including null terminator
 	if((new_node -> operand = malloc((strlen(new_operand) + 1) * sizeof(char))) == NULL)
 	{
@@ -101,29 +62,25 @@ void AddOutputNode(int new_opcode, char *new_operand, int new_operand_type, outp
 	(*head) -> last = new_node; 
 }
 
-//void ReplaceLabelWithValue(
-
 void FreeOutputList(output **head)
 {
-	output 	*o,
-		*temporary_ptr;
+	output 	*current_node,
+		*next_node;
 
 	if(*head == NULL)
 	{
 		return;
 	}
 
-	o  = (*head) -> next;
+	current_node = *head;
 
-	//since we already have the next output, we can free this one
-	free(*head);
-	*head = NULL;
-
-	while(o != NULL)
+	while(current_node != NULL)
 	{
-		temporary_ptr = o -> next;
-		free(o -> operand);
-		free(o);
-		o = temporary_ptr;
+		next_node = current_node -> next;
+		free(current_node -> operand);
+		free(current_node);
+		current_node = next_node;
 	}
+	
+	*head = NULL;
 }

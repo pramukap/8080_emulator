@@ -18,11 +18,12 @@
 typedef struct str_buffer
 {
 	char *str;
-	int index;
+	int last_char_index;
 	int length;
 }
 buffer;
 
+//Creates an empty buffer
 buffer *NewBuffer(void)
 {
 	buffer *b;
@@ -33,24 +34,36 @@ buffer *NewBuffer(void)
 		exit(0);
 	}
 
+	/*
 	if(((b -> str) = malloc(sizeof(char))) == NULL)
 	{
 		printf("Insufficient memory to allocate a buffer string.\n");
 		free(b);
 		exit(0);
 	}
+	*/
 
-	b -> index = 0;
-	b -> length = 1;
+	b -> str = NULL;
+	b -> last_char_index = -1;
+	b -> length = 0;
 
 	return b;
 }
 
-void AddCharToBuffer(buffer *b,  char c)
+void AddCharToBuffer(buffer *b, char c)
 {
 	buffer *temporary_ptr = b;
 
-	if((b -> str = realloc(b -> str, ((b -> length) + 1) * sizeof(char))) == NULL)
+	if(b -> str == NULL)
+	{
+		if(((b -> str) = malloc(sizeof(char))) == NULL)
+		{
+			printf("Insufficient memory to allocate a buffer string.\n");
+			free(b);
+			exit(0);
+		}
+	}
+	else if((b -> str = realloc(b -> str, ((b -> length) + 1) * sizeof(char))) == NULL)
 	{
 		printf("Insufficient memory to allocate a buffer.\n");
 		//free allocated memory
@@ -58,13 +71,15 @@ void AddCharToBuffer(buffer *b,  char c)
 		exit(0);
 	}
 
-	(b -> str)[b -> index] = c;	
+	(b -> last_char_index)++;
+
+	(b -> str)[b -> last_char_index] = c;	
 
 	(b -> length)++;
-	(b -> index)++;
+	//(b -> index)++;
 }
 
-//If c is an uppercase letter, conver it to a lowercase letter
+//Converts uppercase letter to a lowercase letter
 char ToLower(char c)
 {
 	if(c >= 'A' && c <= 'Z')
@@ -75,19 +90,20 @@ char ToLower(char c)
 	return c;
 }
 
+//Shifts the contents of the buffer to the left by one
+//and places null terminators in the empty spaces to the right
 void ShiftBufferContentsLeft(buffer *b)
 {
-	int i = 1;
+	int i;
 
-	while(i < (b -> length))
+	for(i = 1; i < (b -> length); i++)
 	{
 		(b -> str)[i-1] = (b -> str)[i];
-		
-		i++;
 	}
 
 	(b -> str)[(b -> length) - 1] = '\0';
 	(b -> length)--;
+	(b -> last_char_index)--;
 }
 
 void FreeBuffer(buffer **b)
@@ -96,6 +112,11 @@ void FreeBuffer(buffer **b)
 	{
 		return;
 	}	
+
+	if((*b) -> str != NULL)
+	{
+		free((*b) -> str);
+	}
 
 	free(*b);
 	*b = NULL;

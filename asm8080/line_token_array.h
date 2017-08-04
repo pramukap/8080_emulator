@@ -2,8 +2,8 @@
  * Line Token Array Object for the 8080 Assembler				*
  * Pramuka Perera								*
  * 26 July, 2017								*
- * A place to put the opcode + operands in the assembly code			*
- * + all the functions that do something useful with them			*
+ * A line token stores each line of assembly code, excluding any labels		*
+ * and comments in that line							*
  ********************************************************************************/
 
 
@@ -23,19 +23,7 @@ typedef struct l_token
 }
 token;
 
-/*
-char *GetLineToken(int token_index, token *array)
-{
-	return array[token_index].line;
-}
-
-int GetTokenLength(int token_index, token *array)
-{
-	return array[token_index].line_length;
-}
-*/
-
-void AddLineToken(char* _line, int _line_length, int line_index, int *num_tokens, token **array)
+void AddLineToken(char* new_line, int new_line_length, int line_index, int num_tokens, token **array)
 {
 	token *temporary_ptr = *array;
 
@@ -47,41 +35,36 @@ void AddLineToken(char* _line, int _line_length, int line_index, int *num_tokens
 			exit(0);			
 		}
 
-		(*array)[line_index].line = _line;
-		(*array)[line_index].line_length = _line_length;
-		//*num_tokens += 1;
+		(*array)[line_index].line = new_line;
+		(*array)[line_index].line_length = new_line_length;
 
 		return;
 	}
-	
-	if((*array = realloc(*array, (*num_tokens + 1) * sizeof(token))) == NULL)
+	else if((*array = realloc(*array, (num_tokens + 1) * sizeof(token))) == NULL)
 	{
 		printf("Insufficient memory for line token.\n");
 		//Need to free all memory before exiting
 		exit(0);
 	}
 	
-	(*array)[line_index].line = _line;
-	(*array)[line_index].line_length = _line_length;
-	//*num_tokens += 1;
+	(*array)[line_index].line = new_line;
+	(*array)[line_index].line_length = new_line_length;
 }
 
 void FreeLineTokens(int num_tokens, token **array)
 {
-	//int i = 0;
+	int i;
 
 	if(*array == NULL)
 	{
 		return;
 	}
 
-	/*
-	while(i < num_tokens)
+	//free the line strings in each token
+	for(i = 0; i < num_tokens; i++)
 	{
 		free((*array)[i].line);
-		i++;
 	}
-	*/
 
 	free(*array);
 	*array = NULL;
