@@ -15,28 +15,15 @@
 	#define INCLUDE
 #endif
 
-typdef struct pseudo_instruction
-{
-	char *mnemonic;
-}
-psuedo;
+#define NO_PSEUDO_FOUND (-1)
+#define	ORG		  0
+#define	EQU		  1
+#define END		  2
 
-char pseudo_instruction_set[8] = 
-{
-	"org",
-	"equ",
-	"set",
-	"end",
-	"db",
-	"dw",
-	"ds",
-	"if",
-	"endif",
-	"macro",
-	"endm"
-};
+#define NUM_PSEUDO	  3	//# of available pseudo-instructions
 
-enum pseudo_instruction
+/*
+typdef enum pseudo_instruction
 {
 	ORG,
 	EQU,
@@ -47,31 +34,44 @@ enum pseudo_instruction
 	DS,
 	
 }
+*/
 
-void Org(char *line)
+typedef struct pseudo_instruction
 {
-	
+	char *mnemonic;
+	int identifier;		
 }
+pseudo;
 
-void FindPseudoInstruction(char *line)
+pseudo pseudo_instruction_set[NUM_PSEUDO] = 
 {
-	int 	i,
-		result = -1;
-	char 	*pseudo;
+	{"org ", ORG},
+	{"equ ", EQU},
+	{"end ", END}
+};
 
-	for(i = 0; i < 9 && result != 0; i++)
+//finds pseudo-instruction in the line and replaces it with whitespace
+//returns an value identifying the pseudo-instruction
+int FindPseudoInstruction(char *line)
+{
+	int 	i,j,
+		pseudo_length;
+	pseudo 	p;
+
+	for(i = 0; i< NUM_PSEUDO; i++)
 	{
-		if(i == 9)
+		p = pseudo_instruction_set[i];
+		pseudo_length = strlen(p.mnemonic);
+	
+		if(strncmp(p.mnemonic, line, pseudo_length) == 0)
 		{
-			//no pseudo instruction found
+			for(j = 0; j < pseudo_length; j++)
+			{
+				line[j] = ' ';
+			}
+			return p.identifier;
 		}
-
-		pseudo = pseudo_instruction_set[i];
-		result = strncmp(pseudo, line, strlen(pseudo));
 	}
 
-	switch(pseudo)
-	{
-		
-	}
+	return NO_PSEUDO_FOUND;
 }

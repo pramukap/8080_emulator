@@ -17,6 +17,7 @@
 
 #include "label_list.h"
 #include "instruction_set.h"
+#include "pseudo_instruction_set.h"
 #include "line_token_array.h"
 #include "buffer.h"
 #include "output_list.h"
@@ -140,7 +141,7 @@ int main(int argc, char *argv[])
 				//printf("Warning: %s is greater than 5 characters\n", b -> str);
 			}
 					
-			AddLabelNode(&labels, b -> str, line_index);			
+			AddLabelNode(&labels, b -> str, 0x10000, line_index);			
 			//printf("Label: %s\n", (labels -> last_node) -> label);
 	
 			//New buffer for the next label or line
@@ -192,6 +193,38 @@ int main(int argc, char *argv[])
 		b -> length = strlen(lines[line_index].line);
 
 		//find pseudo-instruction
+		switch(FindPseudoInstruction(b -> str))
+		{
+			//ORG
+			case 0:
+				//need to tell emulator the new address
+				while((b -> str)[0] == ' ' || (b -> str)[0] == TAB)
+				{
+					ShiftBufferContentsLeft(b);
+				}
+
+				location_counter += strtol(b -> str, NULL, 16);
+				break;
+			//EQU
+			case 1:
+				/*
+				while((b -> str)[0] == ' ' || (b -> str)[0] == TAB)
+				{
+					ShiftBufferContentsLeft(b);
+				}
+				
+				
+				AddLabelNode(&labels, b -> str, strtol(b -> str, NULL, 16), -1);
+				*/
+				break;
+			//END
+			case 2:
+				//set a at_end boolean value to 1; exits for-loop
+				break;
+			case -1:
+			default:
+				break;
+		};		
 		
 		//assign label value
 		AssignLabelValue(line_index, location_counter, labels);	

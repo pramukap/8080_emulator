@@ -24,7 +24,7 @@ typedef struct label_node
 }
 label;
 
-void AddLabelNode(label **head, char *new_label, int line_index)
+void AddLabelNode(label **head, char *new_label, int new_value, int line_index)
 {
 	label *new_node;
 
@@ -35,7 +35,7 @@ void AddLabelNode(label **head, char *new_label, int line_index)
 	}
 
 	strncpy(new_node -> label, new_label, sizeof(new_node -> label));	
-	new_node -> value = 0x10000;
+	new_node -> value = new_value;
 	new_node -> index = line_index; 
 	new_node -> next = NULL;
 	new_node -> last = NULL;	
