@@ -39,7 +39,8 @@
 #define H_PAIR			4
 #define PSW			6
 
-#define MEMORY_SIZE		4000
+#define HARD_DISK_SIZE		64000		//space in non-volatile memory in bytes
+#define MEMORY_SIZE		4000		//space in volatile memory in bytes
 #define PORTS			256
 #define BYTE			8
 #define ALL			0b00011111
@@ -47,7 +48,15 @@
 #define ALL_EXCEPT_CARRY	0b00011110
 #define CARRY			0b00000001
 
+#define NV_MEM_CTRL_REG		0x3ffc
+#define NV_MEM_DATA_REG		0x3ffd
+#define NV_MEM_ADDR_LOW		0x3ffe
+#define NV_MEM_ADDR_HIGH	0x3fff	
+
+#define CLOCK_RATE		2500000		//Hz (2.5 MHz = 4 us) 
+
 //HARDWARE---
+extern uint8_t *hard_disk;
 extern uint8_t *memory;
 extern uint8_t *io;
  
@@ -117,6 +126,7 @@ extern uint32_t time;
 extern uint16_t control;
 extern uint8_t interrupt_enable;
 extern uint8_t halt_enable;
+extern uint8_t interrupt_request;
 //---
 
 //USER INTERFACE---

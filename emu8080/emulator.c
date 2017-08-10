@@ -2,7 +2,8 @@
  * 8080_Emulator v0.0.0							*
  * Pramuka Perera							*
  * June 23, 2017							*
- * Emulator for the Intel 8080 processor as used in the Altair 8800 	*
+ * Emulator for the Intel 8080 processor			 	*
+ * Operating at 2.5 MHz							*
  ************************************************************************/
 
 #ifndef INCLUDE
@@ -16,8 +17,10 @@
 #endif
 
 #include "instruction_set.h"
+#include "storage.h"
 
 //HARDWARE---
+uint8_t *hard_disk;
 uint8_t *memory;
 uint8_t *io;
 
@@ -87,6 +90,7 @@ uint32_t time;
 uint16_t control;
 uint8_t interrupt_enable;
 uint8_t halt_enable;
+uint8_t interrupt_request;
 //---
 
 //USER INTERFACE---
@@ -97,7 +101,26 @@ uint16_t indicator;
 //---
 //---
 
-/*
+/* Memory-mapped Nonvolatile Memory Registers
+ * 0x3ffc - Storage Control Register
+ * BITS:	3			2			1		0		
+ * VALUE:	Write-Request Flag	Read-Request Flag	Ready Flag	Interrupt-Enable
+ * 0x3ffd - Data Register
+ * 0x3ffe/f - Address Registers 
+ */
+
+/* Memory-mapped Keyboard Registers
+ * 0x3ff9 - Keyboard Control Register
+ * BITS:	1		0
+ * VALUE:	Ready Flag	Interrupt-Enable
+ * 0x3ffa - Data Register
+ */
+
+/* Memory-mapped Display Registers
+ *
+ */ 
+
+
 void GetProgram(void)
 {
 	char buffer[2] = {0}; 		//stores string version of instruction
@@ -158,7 +181,6 @@ void GetProgram(void)
 		exit(0);
 	}
 }
-*/
 
 void DisplayState()
 {
@@ -176,24 +198,37 @@ int main(int argv, char *argc[])
 {
 	time = 0;
 	halt_enable = 0;
+	interrupt_request = 0;
+
+	hard_disk = malloc(HARD_DISK_SIZE * sizeof(uint8_t));
 	memory = malloc(MEMORY_SIZE * sizeof(uint8_t));
 	io = malloc(PORTS * sizeof(uint8_t));
-	pc = 0;
+
+	pc = 0x0000;
 	status[0] = 0;
 
-	//GetProgram();
+	LoadNonVolatileMemory(hard_disk);
+
+	GetProgram();
+
+	memory[NV_MEM_CTRL_REG] = 0x02;
 	
 	while(!halt_enable)
 	{
-		printf("Current pc: %2x\n", pc);
+		//printf("Current pc: %2x\n", pc);
 		instruction_register = memory[pc];
 		pc += 1;
 
 		instruction_set[instruction_register]
 			(&instruction_set_data[instruction_register]);
-		 	
+
+
+		//printf("Control Register: %x\n", memory[NV_MEM_CTRL_REG]);
+		NonVolatileMemoryOperation();		 	
 	}
 	
+	StoreNonVolatileMemory(hard_disk);
+
 	DisplayState();
 	
 	free(memory);			

@@ -3,7 +3,11 @@
  * Pramuka Perera							*
  * June 23, 2017							*
  * Array of the 8080 instruction set, including a function pointer	*
- * to the function that emulates the function				* 
+ * to the function that emulates the function				*
+ * Contents:								*
+ * 27 	- instruction_set_data array					*
+ * 288 	- Instruction-Emulating Functions 				*
+ * 1653	- instruction_set array 					*
  ************************************************************************/
 
 #ifndef INCLUDE
@@ -24,7 +28,7 @@
 //r1 | r2 | rp1 | rp2 | name | size | flags | duration 
 data instruction_set_data[INSTRUCTION_SET_SIZE] = 
 {
-	/*00*/	{NULL, NULL, NULL, "NOP", 1, NONE, 4 },
+	/*00*/	{NULL, NULL, NULL, "NOP", 1, NONE, 4},
 		{NULL, NULL, (uint16_t *)(register_file + B_PAIR), "LXI B, D16", 3, NONE, 10},
 	/*02*/	{NULL, NULL, (uint16_t *)(register_file + B_PAIR), "STAX B", 1, NONE, 7},
 		{NULL, NULL, (uint16_t *)(register_file + B_PAIR), "INX B", 1, NONE, 5},
@@ -216,67 +220,67 @@ data instruction_set_data[INSTRUCTION_SET_SIZE] =
 		{register_file + L, NULL, NULL, "CMP L", 1, ALL, 4},
 	/*BE*/	{NULL, NULL, NULL, "CMP M", 1, ALL, 7},
 		{register_file + A, NULL, NULL, "CMP A", 1, ALL, 4},
-	/*C0*/	{NULL, NULL, NULL, "RNZ", 1, NONE, 0xFF},
+	/*C0*/	{NULL, NULL, NULL, "RNZ", 1, NONE, 5},
 		{NULL, NULL, (uint16_t *)(register_file + B_PAIR), "POP B", 1, NONE, 10},
 	/*C2*/	{NULL, NULL, NULL, "JNZ ADR", 3, NONE, 10},
 		{NULL, NULL, NULL, "JMP ADR", 3, NONE, 10},
-	/*C4*/	{NULL, NULL, NULL, "CNZ ADR", 3, NONE, 0xFF},
+	/*C4*/	{NULL, NULL, NULL, "CNZ ADR", 3, NONE, 11},
 		{NULL, NULL, (uint16_t *)(register_file + B_PAIR), "PUSH B", 1, NONE, 11},
 	/*C6*/	{NULL, NULL, NULL, "ADI D8", 2, ALL, 7},
 		{NULL, NULL, NULL, "RST 0", 1, NONE, 11},
-	/*C8*/	{NULL, NULL, NULL, "RZ", 1, NONE, 0xFF},
+	/*C8*/	{NULL, NULL, NULL, "RZ", 1, NONE, 5},
 		{NULL, NULL, NULL, "RET", 1, NONE, 10},
 	/*CA*/	{NULL, NULL, NULL, "JZ ADR", 3, NONE, 10},
 		{NULL, NULL, NULL, "NOP", 1, NONE, 4},
-	/*CC*/	{NULL, NULL, NULL, "CZ ADR", 3, NONE, 0xFF},
+	/*CC*/	{NULL, NULL, NULL, "CZ ADR", 3, NONE, 11},
 		{NULL, NULL, NULL, "CALL ADR", 3, NONE, 17},
 	/*CE*/	{NULL, NULL, NULL, "ACI D8", 2, ALL, 7},
 		{NULL, NULL, NULL, "RST 1", 1, NONE, 11},
-	/*D0*/	{NULL, NULL, NULL, "RNC", 1, NONE, 0xFF},
+	/*D0*/	{NULL, NULL, NULL, "RNC", 1, NONE, 5},
 		{NULL, NULL, (uint16_t *)(register_file + D_PAIR), "POP D", 1, NONE, 10},
 	/*D2*/	{NULL, NULL, NULL, "JNC ADR", 3, NONE, 10},
 		{NULL, NULL, NULL, "OUT D8", 2, NONE, 10},
-	/*D4*/	{NULL, NULL, NULL, "CNC ADR", 3, NONE, 0xFF},
+	/*D4*/	{NULL, NULL, NULL, "CNC ADR", 3, NONE, 11},
 		{NULL, NULL, (uint16_t *)(register_file + D_PAIR), "PUSH D", 1, NONE, 11},
 	/*D6*/	{NULL, NULL, NULL, "SUI D8", 2, ALL, 7},
 		{NULL, NULL, NULL, "RST 2", 1, NONE, 11},
-	/*D8*/	{NULL, NULL, NULL, "RC", 1, NONE, 0xFF},
+	/*D8*/	{NULL, NULL, NULL, "RC", 1, NONE, 5},
 		{NULL, NULL, NULL, "NOP", 1, NONE, 4},
 	/*DA*/	{NULL, NULL, NULL, "JC ADR", 3, NONE, 10},
 		{NULL, NULL, NULL, "IN D8", 2, NONE, 10},
-	/*DC*/	{NULL, NULL, NULL, "CC ADR", 3, NONE, 0xFF},
+	/*DC*/	{NULL, NULL, NULL, "CC ADR", 3, NONE, 11},
 		{NULL, NULL, NULL, "NOP", 1, NONE, 4},
 	/*DE*/	{NULL, NULL, NULL, "SBI D8", 2, ALL, 7},
 		{NULL, NULL, NULL, "RST 3", 1, NONE, 11},
-	/*E0*/	{NULL, NULL, NULL, "RPO", 1, NONE, 0xFF},
+	/*E0*/	{NULL, NULL, NULL, "RPO", 1, NONE, 5},
 		{NULL, NULL, (uint16_t *)(register_file + H_PAIR), "POP H", 1, NONE, 10},
 	/*E2*/	{NULL, NULL, NULL, "JPO ADR", 3, NONE, 10},
 		{NULL, NULL, NULL, "XTHL", 1, NONE, 18},
-	/*E4*/	{NULL, NULL, NULL, "CPO ADR", 3, NONE, 0xFF},
+	/*E4*/	{NULL, NULL, NULL, "CPO ADR", 3, NONE, 11},
 		{NULL, NULL, (uint16_t *)(register_file + H_PAIR), "PUSH H", 1, NONE, 11},
 	/*E6*/	{NULL, NULL, NULL, "ANI D8", 2, ALL, 7},
 		{NULL, NULL, NULL, "RST 4", 1, NONE, 11},
-	/*E8*/	{NULL, NULL, NULL, "RPE", 1, NONE, 0xFF},
+	/*E8*/	{NULL, NULL, NULL, "RPE", 1, NONE, 5},
 		{NULL, NULL, NULL, "PCHL", 1, NONE, 5},
 	/*EA*/	{NULL, NULL, NULL, "JPE ADR", 3, NONE, 10},
 		{NULL, NULL, NULL, "XCHG", 1, NONE, 4},
-	/*EC*/	{NULL, NULL, NULL, "CPE ADR", 3, NONE, 0xFF},
+	/*EC*/	{NULL, NULL, NULL, "CPE ADR", 3, NONE, 11},
 		{NULL, NULL, NULL, "NOP", 1, NONE, 4},
 	/*EE*/	{NULL, NULL, NULL, "XRI D8", 2, ALL, 7},
 		{NULL, NULL, NULL, "RST 5", 1, NONE, 11},
-	/*F0*/	{NULL, NULL, NULL, "RP", 1, NONE, 0xFF},
+	/*F0*/	{NULL, NULL, NULL, "RP", 1, NONE, 5},
 		{NULL, NULL, (uint16_t *)(register_file + PSW), "POP PSW", 1, NONE, 10},
 	/*F2*/	{NULL, NULL, NULL, "JP ADR", 3, NONE, 10},
 		{NULL, NULL, NULL, "DI", 1, NONE, 4},
-	/*F4*/	{NULL, NULL, NULL, "CP ADR", 3, NONE, 0xFF},
+	/*F4*/	{NULL, NULL, NULL, "CP ADR", 3, NONE, 11},
 		{NULL, NULL, (uint16_t *)(register_file + PSW), "PUSH PSW", 1, NONE, 11},
 	/*F6*/	{NULL, NULL, NULL, "ORI D8", 2, ALL, 7},
 		{NULL, NULL, NULL, "RST 6", 1, NONE, 11},
-	/*F8*/	{NULL, NULL, NULL, "RM", 1, NONE, 0xFF},
+	/*F8*/	{NULL, NULL, NULL, "RM", 1, NONE, 5},
 		{NULL, NULL, NULL, "SPHL", 1, NONE, 5},
 	/*FA*/	{NULL, NULL, NULL, "JM ADR", 3, NONE, 10},
 		{NULL, NULL, NULL, "EI", 1, NONE, 4},
-	/*FC*/	{NULL, NULL, NULL, "CM ADR", 3, NONE, 0xFF},
+	/*FC*/	{NULL, NULL, NULL, "CM ADR", 3, NONE, 11},
 		{NULL, NULL, NULL, "NOP", 1, NONE, 4},
 	/*FE*/	{NULL, NULL, NULL, "CPI D8", 2, ALL, 7},
 		{NULL, NULL, NULL, "RST 7", 1, NONE, 11}	
@@ -377,6 +381,8 @@ void MovRegister(data *in)
 		*source_register = in -> register_1;
 		
 	*destination_register = *source_register;		
+
+	time += in -> duration;
 }
 
 //Move to memory (0x70-0x77 excluding 0x76)
@@ -386,6 +392,8 @@ void MovToMemory(data *in)
 	uint16_t address = h_pair[0];		
 	
 	memory[address] = source[0];
+
+	time += in -> duration;
 }
 
 //Move from memory (0x46, 0x4E, 0x56, 0x5E, 0x66, 0x6E, 0x7E)
@@ -395,6 +403,8 @@ void MovFromMemory(data *in)
 	uint16_t address = h_pair[0];
 	
 	destination[0] = memory[address];	
+
+	time += in -> duration;
 }
 
 //Move immediate value to register or memory (0x06, 0x0E, 0x16, 0x1E, 0x26, 0x2E, 0x36, 0x3E) 
@@ -413,6 +423,8 @@ void Mvi(data *in)
 
 	memory[address] = memory[pc];
 	pc += 1;
+
+	time += in -> duration;
 }
 
 //Load immediate value to register pair (0x01, 0x11, 0x21, 0x31)
@@ -426,6 +438,8 @@ void Lxi(data *in)
 	pc += 2;
 
 	destination_register_pair[0] = (high_byte << 8) + low_byte;
+
+	time += in -> duration;
 }
 
 //Load Accumulator directly (0x3A)
@@ -441,6 +455,8 @@ void Lda(data *in)
 	address = (high_byte << 8) + low_byte;
 	
 	a[0] = memory[address];
+
+	time += in -> duration;
 }
 
 //Load Accumulator directly (0x32)
@@ -456,6 +472,8 @@ void Sta(data *in)
 	address = (high_byte << 8) + low_byte;
 	
 	memory[address] = a[0];
+
+	time += in -> duration;
 }
 
 //Load register pair H directly (0x2A)
@@ -472,6 +490,8 @@ void Lhld(data *in)
 	
 	l[0] = memory[address + 0];
 	h[0] = memory[address + 1];
+
+	time += in -> duration;
 }
 
 //Store register pair H directly (0x22)
@@ -488,6 +508,8 @@ void Shld(data *in)
 	
 	memory[address + 0] = l[0];
 	memory[address + 1] = h[0];
+
+	time += in -> duration;
 }
 
 //Load accumulator indirect (0x0A, 0x1A)
@@ -496,6 +518,8 @@ void Ldax(data *in)
 	uint16_t address = (in -> register_pair)[0];	
 
 	a[0] = memory[address];
+
+	time += in -> duration;
 }
 
 
@@ -505,6 +529,8 @@ void Stax(data *in)
 	uint16_t address = (in -> register_pair)[0];
 	
 	memory[address] = a[0];
+
+	time += in -> duration;
 }
 
 //Exchange contents of register pair H with contents of register pair D (0xEB)
@@ -514,6 +540,8 @@ void Xchg(data *in)
 
 	h_pair[0] = d_pair[0];
 	d_pair[0] = temporary_register_pair;
+
+	time += in -> duration;
 }
 
 //Arithmetic
@@ -530,6 +558,8 @@ void AddRegister(data *in)
 	a[0] += addend;
 
 	ModifyFlags(bit_4_sum, result, in -> flags); 
+
+	time += in -> duration;
 }
 
 //Subtract contents of register from accumulator
@@ -545,6 +575,8 @@ void SubRegister(data *in)
 	a[0] -= subtrahend;
 
 	ModifyFlags(bit_4_sum, result, in -> flags);
+
+	time += in -> duration;
 }
 
 //Add contents of memory to accumulator
@@ -560,6 +592,8 @@ void AddMemory(data *in)
 	a[0] += addend;
 
 	ModifyFlags(bit_4_sum, result, in -> flags);
+
+	time += in -> duration;
 }
 
 //Subtract contents of memory from accumulator
@@ -575,6 +609,8 @@ void SubMemory(data *in)
 	a[0] -= subtrahend;
 
 	ModifyFlags(bit_4_sum, result, in -> flags);
+
+	time += in -> duration;
 }
 
 //Add immediate
@@ -591,6 +627,8 @@ void Adi(data *in)
 	pc += 1;
 
 	ModifyFlags(bit_4_sum, result, in -> flags);
+
+	time += in -> duration;
 }
 
 //Subtract immediate
@@ -607,6 +645,8 @@ void Sui(data *in)
 	pc += 1;
 
 	ModifyFlags(bit_4_sum, result, in -> flags);
+
+	time += in -> duration;
 }
 
 //Add register with carry
@@ -622,6 +662,8 @@ void AdcRegister(data *in)
 	a[0] += addend + (status[0] & 0x01);	//status bit 0 is the carry/borrow flag	pc += 1;
 
 	ModifyFlags(bit_4_sum, result, in -> flags);
+
+	time += in -> duration;
 }
 
 //Subtract register with borrow
@@ -637,6 +679,8 @@ void SbbRegister(data *in)
 	a[0] -= (subtrahend + (status[0] & 0x01));
 
 	ModifyFlags(bit_4_sum, result, in -> flags);
+
+	time += in -> duration;
 }
 
 //Add memory with carry
@@ -652,6 +696,8 @@ void AdcMemory(data *in)
 	a[0] += addend + (status[0] & 0x01);	//status bit 0 is the carry/borrow flag	pc += 1;
 
 	ModifyFlags(bit_4_sum, result, in -> flags);
+
+	time += in -> duration;
 }
 
 
@@ -668,6 +714,8 @@ void SbbMemory(data *in)
 	a[0] -= (subtrahend + (status[0] & 0x01));
 
 	ModifyFlags(bit_4_sum, result, in -> flags);
+
+	time += in -> duration;
 }
 
 //Add immediate with carry
@@ -684,6 +732,8 @@ void Aci(data *in)
 	pc += 1;
 
 	ModifyFlags(bit_4_sum, result, in -> flags);
+
+	time += in -> duration;
 }
 
 //Subtract immediate with borrow
@@ -700,6 +750,8 @@ void Sbi(data *in)
 	pc += 1;
 
 	ModifyFlags(bit_4_sum, result, in -> flags);
+
+	time += in -> duration;
 }
 
 //Increment register
@@ -713,6 +765,8 @@ void InrRegister(data *in)
 	increment_register[0] += 1;
 
 	ModifyFlags(bit_4, (uint16_t)increment_register[0], in -> flags);
+
+	time += in -> duration;
 }
 
 //Decrement register
@@ -726,6 +780,8 @@ void DcrRegister(data *in)
 	decrement_register[0] -= 1;
 
 	ModifyFlags(bit_4, (uint16_t)decrement_register[0], in -> flags);
+
+	time += in -> duration;
 }
 
 //Increment memory
@@ -739,6 +795,8 @@ void InrMemory(data *in)
 	memory[address] += 1;
 
 	ModifyFlags(bit_4, (uint16_t)memory[address], in -> flags);
+
+	time += in -> duration;
 }
 
 //Decrement memory
@@ -752,6 +810,8 @@ void DcrMemory(data *in)
 	memory[address] -= 1;
 
 	ModifyFlags(bit_4, (uint16_t)memory[address], in -> flags);
+
+	time += in -> duration;
 }
 
 //Increment register pair
@@ -760,6 +820,8 @@ void Inx(data *in)
 	uint16_t *increment_register_pair = in -> register_pair;
 
 	increment_register_pair[0] += 1;
+
+	time += in -> duration;
 }
 
 //Decrement register pair
@@ -768,6 +830,8 @@ void Dcx(data *in)
 	uint16_t *decrement_register_pair = in -> register_pair;
 
 	decrement_register_pair[0] -= 1;
+
+	time += in -> duration;
 }
 
 //Add register pair to register pair H
@@ -781,6 +845,8 @@ void Dad(data *in)
 	h_pair[0] += addend;
 
 	ModifyFlags(0, result, in -> flags);
+
+	time += in -> duration;
 }
 
 //Decimal Adjust Accumulator
@@ -804,6 +870,8 @@ void Daa(data *in)
 	} 
 
 	ModifyFlags(bit_4, result, in -> flags);
+
+	time += in -> duration;
 }
 
 //Logic
@@ -821,6 +889,8 @@ void AnaRegister(data *in)
 
 	ModifyFlags(bit_4_sum, result, in -> flags);
 	status[0] &= ~0x01;
+
+	time += in -> duration;
 }
 
 //AND memory
@@ -837,6 +907,8 @@ void AnaMemory(data *in)
 
 	ModifyFlags(bit_4_sum, result, in -> flags);
 	status[0] &= ~0x01;
+
+	time += in -> duration;
 }
 
 //AND immediate
@@ -855,6 +927,8 @@ void Ani(data *in)
 
 	ModifyFlags(bit_4_sum, result, in -> flags);
 	status[0] &= ~0x03;
+
+	time += in -> duration;
 }
 
 //XOR register
@@ -872,6 +946,8 @@ void XraRegister(data *in)
 
 	ModifyFlags(bit_4_sum, result, in -> flags);
 	status[0] &= ~0x03;
+
+	time += in -> duration;
 }
 
 //XOR memory
@@ -889,6 +965,8 @@ void XraMemory(data *in)
 	
 	ModifyFlags(bit_4_sum, result, in -> flags);
 	status[0] &= ~0x03;
+
+	time += in -> duration;
 }
 
 //XOR immediate
@@ -907,6 +985,8 @@ void Xri(data *in)
 
 	ModifyFlags(bit_4_sum, result, in -> flags);
 	status[0] &= ~0x03;
+
+	time += in -> duration;
 }
 
 //OR register
@@ -924,6 +1004,8 @@ void OraRegister(data *in)
 
 	ModifyFlags(bit_4_sum, result, in -> flags);
 	status[0] &= ~0x03;
+
+	time += in -> duration;
 }
 
 //OR memory
@@ -941,6 +1023,8 @@ void OraMemory(data *in)
 
 	ModifyFlags(bit_4_sum, result, in -> flags);
 	status[0] &= ~0x03;
+
+	time += in -> duration;
 }
 
 //OR immediate
@@ -959,6 +1043,8 @@ void Ori(data *in)
 
 	ModifyFlags(bit_4_sum, result, in -> flags);
 	status[0] &= ~0x03;
+
+	time += in -> duration;
 }
 
 //Compare register
@@ -988,6 +1074,8 @@ void CmpRegister(data *in)
 	{
 		status[0] |= 0x01;
 	}
+
+	time += in -> duration;
 }
 
 //Compare memory
@@ -1017,6 +1105,8 @@ void CmpMemory(data *in)
 	{
 		status[0] |= 0x01;
 	}
+
+	time += in -> duration;
 }
 
 //Compare immediate
@@ -1048,6 +1138,8 @@ void Cpi(data *in)
 	}
 	
 	pc += 1;
+
+	time += in -> duration;
 }
 
 //Rotate left
@@ -1059,6 +1151,8 @@ void Rlc(data *in)
 	
 	status[0] &= ~CY;
 	status[0] += bit_7;
+
+	time += in -> duration;
 }
 
 //Rotate right
@@ -1070,6 +1164,8 @@ void Rrc(data *in)
 
 	status[0] &= ~CY;
 	status[0] += bit_0;
+
+	time += in -> duration;
 }
 
 //Rotate left through carry
@@ -1079,6 +1175,8 @@ void Ral(data *in)
 
 	a[0] = (a[0] << 1) + (status[0] & 0x01);			//pass current carry flag value to bit 0 of accumulator
 	status[0] = (status[0] & ~CY) + new_value_of_carry;		//pass bit 7 of accumulator to carry flag
+
+	time += in -> duration;
 }
 
 //Rotate right through carry
@@ -1088,23 +1186,31 @@ void Rar(data *in)
 
 	a[0] = (a[0] >> 1) + ((status[0] & 0x01) << 7);
 	status[0] = (status[0] & ~CY) + new_value_of_carry;
+
+	time += in -> duration;
 }
 
 //Complement accumulator
 void Cma(data *in)
 {
 	a[0] = ~a[0];
+
+	time += in -> duration;
 }
 
 //Complement carry
 void Cmc(data *in)
 {
 	status[0] ^= 0x01;
+
+	time += in -> duration;
 }
 //Set carry
 void Stc(data *in)
 {
 	status[0] |= 0x01;
+
+	time += in -> duration;
 }
 
 //Branch
@@ -1117,6 +1223,8 @@ void Jmp(data *in)
 	uint16_t address = (high_byte << 8) + low_byte;
 
 	pc = address;
+
+	time += in -> duration;
 }
 
 //Conditional jumps
@@ -1134,6 +1242,8 @@ void Jnz(data *in)
 	}
 
 	pc += 2;
+
+	time += in -> duration;
 }
 
 void Jz(data *in)
@@ -1150,6 +1260,8 @@ void Jz(data *in)
 	}
 
 	pc += 2;
+
+	time += in -> duration;
 }
 
 void Jnc(data *in)
@@ -1166,6 +1278,8 @@ void Jnc(data *in)
 	}
 
 	pc += 2;
+
+	time += in -> duration;
 }
 
 void Jc(data *in)
@@ -1182,6 +1296,8 @@ void Jc(data *in)
 	}
 
 	pc += 2;
+
+	time += in -> duration;
 }
 
 void Jpo(data *in)
@@ -1198,6 +1314,8 @@ void Jpo(data *in)
 	}
 
 	pc += 2;
+
+	time += in -> duration;
 }
 
 void Jpe(data *in)
@@ -1214,6 +1332,8 @@ void Jpe(data *in)
 	}
 
 	pc += 2;
+
+	time += in -> duration;
 }
 
 void Jp(data *in)
@@ -1230,6 +1350,8 @@ void Jp(data *in)
 	}
 
 	pc += 2;
+
+	time += in -> duration;
 }
 
 void Jm(data *in)
@@ -1246,6 +1368,8 @@ void Jm(data *in)
 	}
 	
 	pc += 2;
+
+	time += in -> duration;
 }
 
 //Unconditional call
@@ -1260,6 +1384,8 @@ void Call(data *in)
 	sp -= 2;		
 	memory[sp] = pc;
 	pc = address;
+
+	time += in -> duration;
 }
 
 //Conditional calls
@@ -1276,7 +1402,12 @@ void Cnz(data *in)
 		sp -= 2;		
 		memory[sp] = pc;
 		pc = address;
+		
+		time += 17;
+		return;
 	}
+
+	time += in -> duration;
 }
 
 void Cz(data *in)
@@ -1292,7 +1423,12 @@ void Cz(data *in)
 		sp -= 2;		
 		memory[sp] = pc;
 		pc = address;
+
+		time += 17;
+		return;
 	}
+
+	time += in -> duration;
 }
 
 void Cnc(data *in)
@@ -1308,7 +1444,12 @@ void Cnc(data *in)
 		sp -= 2;		
 		memory[sp] = pc;
 		pc = address;
+
+		time += 17;
+		return;
 	}
+
+	time += in -> duration;
 }
 
 void Cc(data *in)
@@ -1324,7 +1465,12 @@ void Cc(data *in)
 		sp -= 2;		
 		memory[sp] = pc;
 		pc = address;
+
+		time += 17;
+		return;
 	}
+
+	time += in -> duration;
 }
 
 void Cpo(data *in)
@@ -1340,7 +1486,12 @@ void Cpo(data *in)
 		sp -= 2;		
 		memory[sp] = pc;
 		pc = address;
+
+		time += 17;
+		return;
 	}
+
+	time += in -> duration;
 }
 
 void Cpe(data *in)
@@ -1356,7 +1507,12 @@ void Cpe(data *in)
 		sp -= 2;		
 		memory[sp] = pc;
 		pc = address;
+
+		time += 17;
+		return;
 	}
+
+	time += in -> duration;
 }
 
 void Cp(data *in)
@@ -1372,7 +1528,12 @@ void Cp(data *in)
 		sp -= 2;		
 		memory[sp] = pc;
 		pc = address;
+
+		time += 17;
+		return;
 	}
+
+	time += in -> duration;
 }
 
 void Cm(data *in)
@@ -1388,7 +1549,12 @@ void Cm(data *in)
 		sp -= 2;		
 		memory[sp] = pc;
 		pc = address;
+
+		time += 17;
+		return;
 	}
+
+	time += in -> duration;
 }
 
 //Unconditional return
@@ -1401,6 +1567,8 @@ void Ret(data *in)
 	
 	sp += 2;
 	pc = address;
+
+	time += in -> duration;
 }
 
 //Conditional returns
@@ -1415,7 +1583,12 @@ void Rnz(data *in)
 	{
 		sp += 2;
 		pc = address;
+
+		time += 11;
+		return;
 	}
+
+	time += in -> duration;
 }
 
 void Rz(data *in)
@@ -1429,7 +1602,12 @@ void Rz(data *in)
 	{
 		sp += 2;
 		pc = address;
+
+		time += 11;
+		return;
 	}
+
+	time += in -> duration;
 }
 
 void Rnc(data *in)
@@ -1443,7 +1621,12 @@ void Rnc(data *in)
 	{
 		sp += 2;
 		pc = address;	
+
+		time += 11;
+		return;
 	}
+
+	time += in -> duration;
 }
 
 void Rc(data *in)
@@ -1457,7 +1640,12 @@ void Rc(data *in)
 	{
 		sp += 2;
 		pc = address;
+
+		time += 11;
+		return;
 	}
+
+	time += in -> duration;
 }
 
 void Rpo(data *in)
@@ -1471,7 +1659,12 @@ void Rpo(data *in)
 	{
 		sp += 2;
 		pc = address;
+
+		time += 11;
+		return;
 	}
+
+	time += in -> duration;
 }
 
 void Rpe(data *in)
@@ -1485,7 +1678,12 @@ void Rpe(data *in)
 	{
 		sp += 2;
 		pc = address;
+
+		time += 11;
+		return;
 	}
+
+	time += in -> duration;
 }
 
 void Rp(data *in)
@@ -1499,7 +1697,12 @@ void Rp(data *in)
 	{
 		sp += 2;
 		pc = address;
+
+		time += 11;
+		return;
 	}
+
+	time += in -> duration;
 }
 
 void Rm(data *in)
@@ -1513,7 +1716,12 @@ void Rm(data *in)
 	{
 		sp += 2;
 		pc = address;
+
+		time += 11;
+		return;
 	}
+
+	time += in -> duration;
 }
 
 //Restart
@@ -1527,12 +1735,16 @@ void Rst(data *in)
 		memory[sp] = pc;
 		pc = address;
 	}
+
+	time += in -> duration;
 }
 
 //Move register pair H to pc
 void Pchl(data *in)
 {
 	pc = h_pair[0];
+
+	time += in -> duration;
 }
 
 //Stack, IO, Machine Control
@@ -1543,6 +1755,8 @@ void PushRp(data *in)
 
 	sp -= 2;
 	memory[sp] = pushed_value;
+
+	time += in -> duration;
 }
 
 //Push psw
@@ -1559,6 +1773,8 @@ void PushPsw(data *in)
 	memory[sp - 2] = pushed_status;
 	
 	sp -= 2;
+
+	time += in -> duration;
 }
 
 //Pop register
@@ -1569,6 +1785,8 @@ void PopRp(data *in)
 	destination_register_pair[0] = (uint16_t)memory[sp];
 	
 	sp += 2;
+
+	time += in -> duration;
 }
 
 //Pop psw
@@ -1584,6 +1802,8 @@ void PopPsw(data *in)
 	a[0] = memory[sp + 1];
 
 	sp += 2;
+
+	time += in -> duration;
 }
 
 //Exchange top two bytes on stack with register pair H
@@ -1596,12 +1816,16 @@ void Xthl(data *in)
 	
 	memory[sp + 0] = temporary_l_register;
 	memory[sp + 1] = temporary_h_register;
+
+	time += in -> duration;
 }
 
 //Set sp to register pair H
 void Sphl(data *in)
 {
 	sp = h_pair[0];
+
+	time += in -> duration;
 }
 
 //Input
@@ -1611,6 +1835,8 @@ void In(data *in)
 	pc += 1;
 
 	a[0] = io[port];
+
+	time += in -> duration;
 }
 
 //Output
@@ -1619,31 +1845,39 @@ void Out(data *in)
 	uint8_t port = memory[pc + 0];
 	pc += 1;
 
-	io[port] = a[0];
+	io[port] = a[0];	
+
+	time += in -> duration;
 }
 
 //Enable interrupts
 void Ei(data *in)
 {
 	interrupt_enable |= 0x01;
+
+	time += in -> duration;
 }
 
 //Disable interrupts
 void Di(data *in)
 {
 	interrupt_enable &= ~0x01;
+
+	time += in -> duration;
 }
 
 //Halt
 void Hlt(data *in)
 {
 	halt_enable |= 0x01;
+
+	time += in -> duration;
 }
 
 //Nop
 void Nop(data *in)
 {
-
+	time += in -> duration;
 }
 
 instruction instruction_set[INSTRUCTION_SET_SIZE] =

@@ -12,6 +12,7 @@
 	#include <stdio.h>
 	#include <stdint.h>
 	#include <string.h>
+	#include "common.h"
 
 	#define INCLUDE
 #endif
@@ -25,14 +26,14 @@ token;
 
 void AddLineToken(char* new_line, int new_line_length, int line_index, int num_tokens, token **array)
 {
-	token *temporary_ptr = *array;
+	//token *temporary_ptr = *array;
 
 	if(*array == NULL)
 	{
 		if((*array = malloc(sizeof(token))) == NULL)
 		{
 			printf("Insufficient memory for line token.");
-			exit(0);			
+			exit(EXIT_FAILURE);			
 		}
 
 		(*array)[line_index].line = new_line;
@@ -44,7 +45,7 @@ void AddLineToken(char* new_line, int new_line_length, int line_index, int num_t
 	{
 		printf("Insufficient memory for line token.\n");
 		//Need to free all memory before exiting
-		exit(0);
+		exit(EXIT_FAILURE);
 	}
 	
 	(*array)[line_index].line = new_line;

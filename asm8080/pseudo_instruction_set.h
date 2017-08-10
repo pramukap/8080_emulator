@@ -11,6 +11,7 @@
 	#include <stdio.h>
 	#include <stdint.h>
 	#include <string.h>
+	#include "common.h"
 
 	#define INCLUDE
 #endif
@@ -63,7 +64,7 @@ int FindPseudoInstruction(char *line)
 		p = pseudo_instruction_set[i];
 		pseudo_length = strlen(p.mnemonic);
 	
-		if(strncmp(p.mnemonic, line, pseudo_length) == 0)
+		if(strncmp(p.mnemonic, line, pseudo_length) == MATCH)
 		{
 			for(j = 0; j < pseudo_length; j++)
 			{

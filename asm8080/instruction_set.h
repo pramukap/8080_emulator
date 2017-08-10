@@ -11,14 +11,13 @@
 	#include <stdio.h>
 	#include <stdint.h>
 	#include <string.h>
-
+	#include "common.h"
 
 	#define INCLUDE
 #endif
 
 #define ARRAY_SIZE 256
 #define	BEFORE	(-1)
-#define MATCH 	0
 #define AFTER	1
 
 #define	NONE	0

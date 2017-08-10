@@ -10,6 +10,7 @@
 	#include <stdio.h>
 	#include <stdint.h>
 	#include <string.h>
+	#include "common.h"
 
 	#define INCLUDE
 #endif
@@ -31,7 +32,7 @@ void AddLabelNode(label **head, char *new_label, int new_value, int line_index)
 	if((new_node = malloc(sizeof(label))) == NULL)
 	{
 		printf("Couldn't allocate space to save a label node.");
-		exit(0);
+		exit(EXIT_FAILURE);
 	}
 
 	strncpy(new_node -> label, new_label, sizeof(new_node -> label));	
@@ -87,10 +88,10 @@ label FindLabelInOperand(char *operand, label *head)
 		label_length = strlen(label_node -> label);
 		
 		//try to find the current label somewhere in this operand
-		for(i = 0; i + label_length < operand_length; i++)
+		for(i = 0; i + label_length <= operand_length; i++)
 		{
 			//was the label found in the operand
-			if(strncmp(operand + i, label_node -> label, label_length) == 0)
+			if(strncmp(operand + i, label_node -> label, label_length) == MATCH)
 			{
 				//prevent following type of case: Identified Label: "b", Actual Label: "butt"
 				if(i + label_length <= last_char_index)

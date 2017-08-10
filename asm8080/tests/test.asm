@@ -1,5 +1,3 @@
-ORG 000a
-
 HELLO_WORLD:	mvi h, 12; 0,1
 		adi 0 ;2,3
 		jmp LABEL ; 4,5,6

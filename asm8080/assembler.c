@@ -11,6 +11,7 @@
 	#include <stdio.h>
 	#include <stdint.h>
 	#include <string.h>
+	#include "common.h"
 
 	#define INCLUDE
 #endif
@@ -22,17 +23,29 @@
 #include "buffer.h"
 #include "output_list.h"
 
-#define	TAB	0x09
-#define	NEWLINE	0x0a
+//#define	TAB	0x09
+//#define	NEWLINE	0x0a
 
-FILE *assembly_file = NULL;	//input file
-//FILE *object_file = NULL;	//output file
+FILE *assembly_file 	= NULL;	//input source file
+FILE *object_file 	= NULL;	//output containing loader directives and machine-code file
+FILE *listing_file 	= NULL; //output file containing original code and machine code in a readable format
 
 char *assembly_code 	= NULL;		//buffer for assembly code drawn from input file
 token *lines 		= NULL;		//array of line tokens (see line_token_array.h for description of line_tokens)
+buffer *b 		= NULL;		//reusable buffer that hold snippets of code
 label *labels 		= NULL;		//linked list of assembly code labels
 output *final 		= NULL;		//array of opcodes + operands that are to be printed to stdout or to a file
 
+void FreeCodeBuffer(char **buffer)
+{
+	if(*buffer == NULL)
+	{
+		return;
+	}
+
+	free(*buffer);
+	*buffer = NULL;
+}
 
 int main(int argc, char *argv[])
 {
@@ -44,7 +57,7 @@ int main(int argc, char *argv[])
 		line_index 		= 0,	//index of current line of assembler file
 		location_counter 	= 0;	//memory address at which current instruction is being placed
 	
-	buffer *b = NULL;		//reusable buffer that hold snippets of code
+
 	output *o = NULL;		//used to access nodes from the output linked list
 
 	label l;			//used to access labels from the label linked list
@@ -62,25 +75,42 @@ int main(int argc, char *argv[])
 	*/
 
 	//open asm file
-	if(argc < 2)
+	if(argc < 3)
 	{
-		printf("You didn't give me an assembly file.\nI'm gonna leave now :P\n");
-		exit(0);
+		printf("You didn't give me the necessary filenames.\n");
+		exit(EXIT_FAILURE);
 	}
 
 
-	assembly_file = fopen(argv[1], "r");
-	//object_file = fopen(argv[2], "w");
+	if((assembly_file = fopen(argv[1], "r")) == NULL)
+	{
+		printf("Failed to open assembly file.\n");
+		exit(EXIT_FAILURE);
+	}
+	if((object_file = fopen(argv[2], "w")) == NULL)
+	{
+		printf("Failed to open object file.\n");
+		exit(EXIT_FAILURE);
+	}
+	if((listing_file = fopen(strcat(argv[2],".list"), "w")) == NULL)
+	{
+		printf("Failed to open assembly file\n");
+		exit(EXIT_FAILURE);
+	}
 
 	//get and store the source code from input file
 	//NOTE: The assembly_code buffer is not null-terminated
-	assembly_code = malloc(sizeof(char));
+	if((assembly_code = malloc(sizeof(char))) == NULL)
+	{
+		printf("Failed to allocate memory for code buffer.\n");
+		exit(EXIT_FAILURE);
+	}
 	code_size++;
 
 	while((c = fgetc(assembly_file)) != EOF)
 	{
 		assembly_code[code_index] = c;
-		//printf("%c", assembly_code[code_index]);		
+		fprintf(listing_file, "%c", assembly_code[code_index]);		
 
 		//make space for a new char
 		temporary_ptr = assembly_code;
@@ -88,7 +118,7 @@ int main(int argc, char *argv[])
 		{
 			printf("No more memory to store line token. Please try again.\n");
 			free(temporary_ptr);
-			exit(0);
+			exit(EXIT_FAILURE);
 		}
 
 		code_index++;
@@ -132,7 +162,7 @@ int main(int argc, char *argv[])
 			||     (b -> str)[0] > 'z' 			   )
 			{
 				printf("Invalid Label: %s\n", b -> str);
-				exit(0);
+				exit(EXIT_FAILURE);
 			}		
 
 			//The assembler will only store the first 5 chars of the label
@@ -189,9 +219,10 @@ int main(int argc, char *argv[])
 	//look for pseudo-instructions, instructions, and operands in lines and assign values to labels
 	for(line_index = 0; line_index < line_array_size; line_index++)
 	{
-		b -> str = lines[line_index].line;
 		b -> length = strlen(lines[line_index].line);
-
+		b -> str = malloc((b -> length) * sizeof(char));
+		strcpy(b -> str, lines[line_index].line);
+		
 		//find pseudo-instruction
 		switch(FindPseudoInstruction(b -> str))
 		{
@@ -267,20 +298,23 @@ int main(int argc, char *argv[])
 			o -> final_operand = strtol(o -> operand, NULL, 16);
 		}
 	
-		printf("%02x\n", o -> opcode);
+		fwrite(&(o -> opcode), sizeof(uint8_t), 1, object_file); 	
+		fprintf(listing_file, "%02x\n", o -> opcode);
 		
 		switch(o -> operand_type)
 			{
 				case 	3:
-						printf("%02x\n", o ->final_operand);
+						fwrite(&(o -> final_operand), sizeof(uint8_t), 1, object_file);
+						fprintf(listing_file, "%02x\n", o -> final_operand);
 						break;
 				case	4:	
 				case	5:
+						fwrite(&(o -> final_operand), sizeof(uint8_t), 2, object_file);
 						//print the low byte
-						printf("%02x\n", (o -> final_operand) & 0x0FF);
+						fprintf(listing_file, "%02x\n", (o -> final_operand) & 0x0FF);
 		
 						//print the high byte
-						printf("%02x\n", (o -> final_operand) & 0x0FF00);
+						fprintf(listing_file, "%02x\n", ((o -> final_operand) >> 8) & 0x0FF);
 						break;
 				case	R:
 				case	RP:
@@ -293,10 +327,32 @@ int main(int argc, char *argv[])
 		o = o -> next;
 	}		
 	
-	printf("fi\n");
+	fprintf(listing_file, "fi\n");
 
-	//free memory
+	//close files and free memory
+	fclose(assembly_file);
+	assembly_file = NULL;
+
+	fclose(object_file);
+	object_file = NULL;
+
+	fclose(listing_file);
+	listing_file = NULL;
+
+	if(assembly_code != NULL)
+	{
+		free(assembly_code);
+		assembly_code = NULL;
+	}
+
+	FreeLabelList(&labels);
+
+	FreeLineTokens(line_array_size, &lines);
 	
-	return 1;
+	FreeBuffer(&b);	
+	
+	FreeOutputList(&final);
+	
+	return EXIT_SUCCESS;
 }
 

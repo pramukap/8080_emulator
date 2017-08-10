@@ -11,6 +11,7 @@
 	#include <stdio.h>
 	#include <stdint.h>
 	#include <string.h>
+	#include "common.h"
 
 	#define INCLUDE
 #endif
@@ -33,7 +34,7 @@ void AddOutputNode(int new_opcode, char *new_operand, int new_operand_type, outp
 	if((new_node = malloc(sizeof(output))) == NULL)
 	{
 		printf("Failed to allocate output node.\n");
-		exit(0);
+		exit(EXIT_FAILURE);
 	}
 
 	new_node -> opcode = new_opcode;
@@ -46,7 +47,7 @@ void AddOutputNode(int new_opcode, char *new_operand, int new_operand_type, outp
 	if((new_node -> operand = malloc((strlen(new_operand) + 1) * sizeof(char))) == NULL)
 	{
 		printf("Failed to allocate string.\n");
-		exit(0);
+		exit(EXIT_FAILURE);
 	}
 	strcpy(new_node -> operand, new_operand);
 	

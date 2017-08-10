@@ -11,6 +11,7 @@
 	#include <stdio.h>
 	#include <stdint.h>
 	#include <string.h>
+	#include "common.h"
 
 	#define INCLUDE
 #endif
@@ -31,7 +32,7 @@ buffer *NewBuffer(void)
 	if((b = malloc(sizeof(buffer))) == NULL)
 	{
 		printf("Insufficient memory to allocate a buffer.\n");
-		exit(0);
+		exit(EXIT_FAILURE);
 	}
 
 	/*
@@ -60,7 +61,7 @@ void AddCharToBuffer(buffer *b, char c)
 		{
 			printf("Insufficient memory to allocate a buffer string.\n");
 			free(b);
-			exit(0);
+			exit(EXIT_FAILURE);
 		}
 	}
 	else if((b -> str = realloc(b -> str, ((b -> length) + 1) * sizeof(char))) == NULL)
@@ -68,7 +69,7 @@ void AddCharToBuffer(buffer *b, char c)
 		printf("Insufficient memory to allocate a buffer.\n");
 		//free allocated memory
 		free(temporary_ptr);
-		exit(0);
+		exit(EXIT_FAILURE);
 	}
 
 	(b -> last_char_index)++;
