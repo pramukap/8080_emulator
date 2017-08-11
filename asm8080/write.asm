@@ -1,5 +1,7 @@
 LETTER EQU 42
 
+ORG 2000
+
 ;Store data to nv data register
 MVI A, LETTER
 STA 3ffd
@@ -21,4 +23,9 @@ WAIT: 	LDA 3ffc
 	ANI 02
 	JZ WAIT
 
-HLT 
+HLT
+
+END
+
+HLT
+ 

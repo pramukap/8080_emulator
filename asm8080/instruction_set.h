@@ -302,7 +302,7 @@ instruction BinarySearch(char *line)
 
 	instruction no_instruction_found = {"no instruction found", 0x20, 0, NONE};
 
-	while(search_index >= 0 && search_index <= ARRAY_SIZE - 1)
+	while(search_index >= 0 && search_index <= ARRAY_SIZE - 1 && rounded_shift_value/2.0 >= 0.55)
 	{
 		mnemonic = instruction_set[search_index].mnemonic;
 		mnemonic_length = strlen(mnemonic);

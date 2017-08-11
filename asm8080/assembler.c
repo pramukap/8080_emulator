@@ -47,9 +47,11 @@ int main(int argc, char *argv[])
 		line_array_size		= 0,	//total number of tokens in the line array
 		line_index 		= 0,	//index of current line of assembler file
 		location_counter 	= 0,	//memory address at which current instruction is being placed
-		byte_counter		= 0;	//count of bytes for every ORG address
+		byte_counter		= 0,	//count of bytes for every ORG address
+		not_end			= 1;	//boolean value that is set to 0 when the END pseudo-instruction is detected
 
-	output *o = NULL;		//used to access nodes from the output linked list
+	output 	*o 	= NULL,		//used to access nodes from the output linked list
+		*o1 	= NULL;
 
 	label l;			//used to access labels from the label linked list
 	instruction i;			//used to access instructions from the instruction set
@@ -213,7 +215,7 @@ int main(int argc, char *argv[])
 	//look for pseudo-instructions, instructions, and operands in lines and assign values to labels
 	b1 = NewBuffer();
 
-	for(line_index = 0; line_index < line_array_size; line_index++)
+	for(line_index = 0; line_index < line_array_size && not_end; line_index++)
 	{
 		b -> length = strlen(lines[line_index].line);
 		b -> str = malloc((b -> length) * sizeof(char));
@@ -223,16 +225,15 @@ int main(int argc, char *argv[])
 		switch(FindPseudoInstruction(b -> str))
 		{
 			case ORG:	
-				/*
 				while((b -> str)[0] == ' ' || (b -> str)[0] == TAB)
 				{
 					ShiftBufferContentsLeft(b);
 				}
 				
-				AddOutputNode(0x20, b -> str, ORG_ADDR, &final);
+				AddOutputNode(strtol(b -> str, NULL, 16), "", ORG_ADDR, &final);
 				
 				location_counter += strtol(b -> str, NULL, 16);
-				*/
+				
 				break;
 			
 			case EQU:
@@ -255,6 +256,7 @@ int main(int argc, char *argv[])
 			
 			case END:
 				//set a at_end boolean value to 1; exits for-loop
+				not_end = 0;
 				break;
 			
 			case NO_PSEUDO_FOUND:
@@ -303,9 +305,12 @@ int main(int argc, char *argv[])
 		{
 			o -> final_operand = strtol(o -> operand, NULL, 16);
 		}
-	
-		fwrite(&(o -> opcode), sizeof(uint8_t), 1, object_file); 	
-		fprintf(listing_file, "%02x\n", o -> opcode);
+
+		if(o -> type != ORG_ADDR)
+		{	
+			fwrite(&(o -> opcode), sizeof(uint8_t), 1, object_file); 	
+			fprintf(listing_file, "%02x\n", o -> opcode);
+		}
 	
 		//carry out final write task based on operand type	
 		switch(o -> type)
@@ -316,6 +321,7 @@ int main(int argc, char *argv[])
 						//fwrite(&(o -> final_operand), sizeof(uint8_t), 1, object_file);
 						fprintf(listing_file, "%02x\n", o -> final_operand);
 						break;
+
 				case	D16:	
 				case	ADDR:
 						
@@ -328,6 +334,27 @@ int main(int argc, char *argv[])
 						AddCharToBuffer(object_code, (uint8_t)(((o -> final_operand) >> 8) & 0x0ff));
 						fprintf(listing_file, "%02x\n", ((o -> final_operand) >> 8) & 0x0ff);
 						break;
+				
+				case	ORG_ADDR:
+						byte_counter = 0;
+						o1 = o -> next;
+						//count the bytes between this org and the next org
+						while(o1 != NULL)
+						{
+							if(o1 -> type == ORG_ADDR)
+							{
+								break;
+							}
+							byte_counter++;
+							o1 = o1 -> next;
+						}
+
+						AddCharToBuffer(object_code, (uint8_t)byte_counter);
+						AddCharToBuffer(object_code, (uint8_t)((o -> opcode) & 0x0ff));
+						AddCharToBuffer(object_code, (uint8_t)(((o -> opcode) >> 8) & 0x0ff));
+						fprintf(listing_file, "%02x%04x\n", byte_counter, o -> opcode);
+						break;
+				
 				case 	NONE: 
 					default:
 						//printf("\n"); 
