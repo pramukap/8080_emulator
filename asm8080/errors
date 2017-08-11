@@ -1,5 +1,0 @@
-In file included from assembler.c:21:0:
-line_token_array.h: In function ‘AddLineToken’:
-line_token_array.h:28:9: warning: unused variable ‘temporary_ptr’ [-Wunused-variable]
-  token *temporary_ptr = *array;
-         ^

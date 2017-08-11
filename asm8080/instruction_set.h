@@ -20,23 +20,13 @@
 #define	BEFORE	(-1)
 #define AFTER	1
 
+/*
 #define	NONE	0
 #define	R	1
 #define	RP	2
 #define	D8	3
 #define	D16	4
 #define	ADDR	5
-/*
-typedef enum operand_type	
-{
-	NONE,
-	R, 
-	RP, 
-	D8,
-	D16, 
-	ADDR
-}
-operand;
 */
 
 typedef struct instruction_information
@@ -44,7 +34,7 @@ typedef struct instruction_information
 	char* mnemonic;
 	uint8_t opcode;
 	uint8_t operand_bytes;
-	int operand_type;
+	operand_type type;
 }
 instruction;
 

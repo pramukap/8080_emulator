@@ -17,7 +17,7 @@
 
 typedef struct label_node
 {
-	char label[6];				//stores null-terminated label
+	char *label;				//stores null-terminated label
 	int value;				//value associated with label
 	int index;				//for address labels, line on which label was found
 	struct label_node *next;
@@ -31,11 +31,17 @@ void AddLabelNode(label **head, char *new_label, int new_value, int line_index)
 
 	if((new_node = malloc(sizeof(label))) == NULL)
 	{
-		printf("Couldn't allocate space to save a label node.");
+		printf("Couldn't allocate space to save a label node.\n");
 		exit(EXIT_FAILURE);
 	}
 
-	strncpy(new_node -> label, new_label, sizeof(new_node -> label));	
+	if(((new_node -> label) = malloc((strlen(new_label) + 1) * sizeof(char))) == NULL)
+	{
+		printf("Failed to allocate space for label.\n");
+		exit(EXIT_FAILURE);
+	}
+
+	strcpy(new_node -> label, new_label);	
 	new_node -> value = new_value;
 	new_node -> index = line_index; 
 	new_node -> next = NULL;

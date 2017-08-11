@@ -16,61 +16,68 @@
 	#define INCLUDE
 #endif
 
-#define NO_PSEUDO_FOUND (-1)
-#define	ORG		  0
-#define	EQU		  1
-#define END		  2
+//#define NO_PSEUDO_FOUND (-1)
+//#define	ORG		  0
+//#define	EQU		  1
+//#define END		  2
 
 #define NUM_PSEUDO	  3	//# of available pseudo-instructions
 
-/*
-typdef enum pseudo_instruction
-{
-	ORG,
-	EQU,
-	SET,
-	END,
-	DB,
-	DW,
-	DS,
-	
-}
-*/
-
-typedef struct pseudo_instruction
+typedef struct pseudo_instruction_data
 {
 	char *mnemonic;
-	int identifier;		
+	pseudo_identifier identifier;		
 }
-pseudo;
+pseudo_data;
 
-pseudo pseudo_instruction_set[NUM_PSEUDO] = 
+pseudo_data pseudo_instruction_set[NUM_PSEUDO] = 
 {
-	{"org ", ORG},
-	{"equ ", EQU},
-	{"end ", END}
+	{"org", ORG},
+	{"equ", EQU},
+	{"end", END}
 };
 
 //finds pseudo-instruction in the line and replaces it with whitespace
 //returns an value identifying the pseudo-instruction
-int FindPseudoInstruction(char *line)
+pseudo_identifier FindPseudoInstruction(char *line)
 {
-	int 	i,j,
+	int 	i,j,k,
+		line_length,
 		pseudo_length;
-	pseudo 	p;
+	pseudo_data 	p;
 
+	line_length = strlen(line);
+
+	//iterate through pseudo_instruction_set
 	for(i = 0; i< NUM_PSEUDO; i++)
 	{
 		p = pseudo_instruction_set[i];
 		pseudo_length = strlen(p.mnemonic);
-	
-		if(strncmp(p.mnemonic, line, pseudo_length) == MATCH)
+
+		//iterate through line
+		for(j = 0; pseudo_length + j <= line_length; j++)	
 		{
-			for(j = 0; j < pseudo_length; j++)
+			if(strncmp(p.mnemonic, line + j, pseudo_length) == MATCH)
 			{
-				line[j] = ' ';
+				//check that matching part of line is not within another word (ex. "ORG" in "ORGAN")
+				if(strlen(line + j) > pseudo_length)	
+				{
+					if(line[j + pseudo_length] == ' ' 
+					|| line[j + pseudo_length] == TAB 
+					|| line[j + pseudo_length] == '\a') 
+					{
+						for(k = j; k < j + pseudo_length; k++)
+						{
+							line[k] = ' ';
+						}
+						return p.identifier;
+					}
+				}
+				else
+				{
+					return p.identifier;
+				}
 			}
-			return p.identifier;
 		}
 	}
 

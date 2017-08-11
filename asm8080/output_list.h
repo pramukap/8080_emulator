@@ -21,13 +21,13 @@ typedef struct output_node
 	int opcode;
 	char *operand;			//stores the unprocessed operand
 	int final_operand;		//stores the final numerical value of the operand
-	int operand_type;		//data byte, data word, or address
+	operand_type type;		//data byte, data word, or address
 	struct output_node *next;
 	struct output_node *last;
 }
 output;
 
-void AddOutputNode(int new_opcode, char *new_operand, int new_operand_type, output **head)
+void AddOutputNode(int new_opcode, char *new_operand, operand_type new_operand_type, output **head)
 {
 	output *new_node;
 
@@ -39,7 +39,7 @@ void AddOutputNode(int new_opcode, char *new_operand, int new_operand_type, outp
 
 	new_node -> opcode = new_opcode;
 	new_node -> final_operand = 0x10000;
-	new_node -> operand_type = new_operand_type;
+	new_node -> type = new_operand_type;
 	new_node -> next = NULL;
 	new_node -> operand = NULL;
 	

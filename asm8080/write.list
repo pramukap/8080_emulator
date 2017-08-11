@@ -1,0 +1,57 @@
+LETTER EQU 42
+
+;Store data to nv data register
+MVI A, LETTER
+STA 3ffd
+
+;Store address to address register
+MVI A, 01
+STA 3ffe
+
+MVI A, 00
+STA 3fff
+
+;Modify control register to write to storage
+LDA 3ffc
+ORI 08
+STA 3ffc
+
+;Wait for storage to happen
+WAIT: 	LDA 3ffc
+	ANI 02
+	JZ WAIT
+
+HLT 
+3e
+42
+32
+fd
+3f
+3e
+01
+32
+fe
+3f
+3e
+00
+32
+ff
+3f
+3a
+fc
+3f
+f6
+08
+32
+fc
+3f
+3a
+fc
+3f
+e6
+02
+ca
+17
+00
+76
+fi

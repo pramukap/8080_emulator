@@ -32,20 +32,11 @@ FILE *listing_file 	= NULL; //output file containing original code and machine c
 
 char *assembly_code 	= NULL;		//buffer for assembly code drawn from input file
 token *lines 		= NULL;		//array of line tokens (see line_token_array.h for description of line_tokens)
-buffer *b 		= NULL;		//reusable buffer that hold snippets of code
+buffer 	*b 		= NULL,		//reusable buffer that hold snippets of code
+	*b1		= NULL;
 label *labels 		= NULL;		//linked list of assembly code labels
 output *final 		= NULL;		//array of opcodes + operands that are to be printed to stdout or to a file
-
-void FreeCodeBuffer(char **buffer)
-{
-	if(*buffer == NULL)
-	{
-		return;
-	}
-
-	free(*buffer);
-	*buffer = NULL;
-}
+buffer *object_code	= NULL;		//buffer for object code prior to storage in object file
 
 int main(int argc, char *argv[])
 {
@@ -55,8 +46,8 @@ int main(int argc, char *argv[])
 		code_index 		= 0,	//index of current char in assembly_code buffer
 		line_array_size		= 0,	//total number of tokens in the line array
 		line_index 		= 0,	//index of current line of assembler file
-		location_counter 	= 0;	//memory address at which current instruction is being placed
-	
+		location_counter 	= 0,	//memory address at which current instruction is being placed
+		byte_counter		= 0;	//count of bytes for every ORG address
 
 	output *o = NULL;		//used to access nodes from the output linked list
 
@@ -74,7 +65,7 @@ int main(int argc, char *argv[])
 	}
 	*/
 
-	//open asm file
+	//open asm, object, and listing files
 	if(argc < 3)
 	{
 		printf("You didn't give me the necessary filenames.\n");
@@ -124,6 +115,7 @@ int main(int argc, char *argv[])
 		code_index++;
 		code_size++;
 	}
+	assembly_code[code_index] = '\0';
 
 	//printf("Done storing code\n");
 
@@ -165,12 +157,14 @@ int main(int argc, char *argv[])
 				exit(EXIT_FAILURE);
 			}		
 
+			/*
 			//The assembler will only store the first 5 chars of the label
 			if(strlen(b -> str) > 5)
 			{
 				//printf("Warning: %s is greater than 5 characters\n", b -> str);
 			}
-					
+			*/
+		
 			AddLabelNode(&labels, b -> str, 0x10000, line_index);			
 			//printf("Label: %s\n", (labels -> last_node) -> label);
 	
@@ -217,6 +211,8 @@ int main(int argc, char *argv[])
 	//printf("Done processing code into labels and lines\n");
 
 	//look for pseudo-instructions, instructions, and operands in lines and assign values to labels
+	b1 = NewBuffer();
+
 	for(line_index = 0; line_index < line_array_size; line_index++)
 	{
 		b -> length = strlen(lines[line_index].line);
@@ -226,33 +222,42 @@ int main(int argc, char *argv[])
 		//find pseudo-instruction
 		switch(FindPseudoInstruction(b -> str))
 		{
-			//ORG
-			case 0:
-				//need to tell emulator the new address
-				while((b -> str)[0] == ' ' || (b -> str)[0] == TAB)
-				{
-					ShiftBufferContentsLeft(b);
-				}
-
-				location_counter += strtol(b -> str, NULL, 16);
-				break;
-			//EQU
-			case 1:
+			case ORG:	
 				/*
 				while((b -> str)[0] == ' ' || (b -> str)[0] == TAB)
 				{
 					ShiftBufferContentsLeft(b);
 				}
 				
+				AddOutputNode(0x20, b -> str, ORG_ADDR, &final);
 				
-				AddLabelNode(&labels, b -> str, strtol(b -> str, NULL, 16), -1);
+				location_counter += strtol(b -> str, NULL, 16);
 				*/
 				break;
-			//END
-			case 2:
+			
+			case EQU:
+				//record the label			
+				while((b -> str)[0] != ' ' && (b -> str)[0] != TAB)
+				{
+					AddCharToBuffer(b1, (b -> str)[0]);
+					ShiftBufferContentsLeft(b);
+				}
+				
+				//clear away the whitespace to isolate the number
+				while((b -> str)[0] == ' ' || (b -> str)[0] == TAB)
+				{
+					ShiftBufferContentsLeft(b);
+				}
+				
+				AddLabelNode(&labels, b1 -> str, strtol(b -> str, NULL, 16), -1);
+				
+				break;
+			
+			case END:
 				//set a at_end boolean value to 1; exits for-loop
 				break;
-			case -1:
+			
+			case NO_PSEUDO_FOUND:
 			default:
 				break;
 		};		
@@ -275,13 +280,14 @@ int main(int argc, char *argv[])
 			}
 			
 			//output node for the discovered instruction
-			AddOutputNode(i.opcode, b -> str, i.operand_type, &final); 
+			AddOutputNode(i.opcode, b -> str, i.type, &final); 
 		}	
 	}
 
 	//printf("Done processing lines and finding label values.\n");
 
-	//process operands into integer values
+	//process operands into integer values; store opcodes and operands to files
+	object_code = NewBuffer();
 	o = final;
 
 	while(o != NULL)
@@ -300,24 +306,28 @@ int main(int argc, char *argv[])
 	
 		fwrite(&(o -> opcode), sizeof(uint8_t), 1, object_file); 	
 		fprintf(listing_file, "%02x\n", o -> opcode);
-		
-		switch(o -> operand_type)
+	
+		//carry out final write task based on operand type	
+		switch(o -> type)
 			{
-				case 	3:
-						fwrite(&(o -> final_operand), sizeof(uint8_t), 1, object_file);
+				case 	D8:
+						//Do I need the casting here?
+						AddCharToBuffer(object_code, (uint8_t)((o -> final_operand) & 0x0ff));
+						//fwrite(&(o -> final_operand), sizeof(uint8_t), 1, object_file);
 						fprintf(listing_file, "%02x\n", o -> final_operand);
 						break;
-				case	4:	
-				case	5:
-						fwrite(&(o -> final_operand), sizeof(uint8_t), 2, object_file);
+				case	D16:	
+				case	ADDR:
+						
+						//fwrite(&(o -> final_operand), sizeof(uint8_t), 2, object_file);
 						//print the low byte
-						fprintf(listing_file, "%02x\n", (o -> final_operand) & 0x0FF);
+						AddCharToBuffer(object_code, (uint8_t)((o -> final_operand) & 0x0ff));
+						fprintf(listing_file, "%02x\n", (o -> final_operand) & 0x0ff);
 		
 						//print the high byte
-						fprintf(listing_file, "%02x\n", ((o -> final_operand) >> 8) & 0x0FF);
+						AddCharToBuffer(object_code, (uint8_t)(((o -> final_operand) >> 8) & 0x0ff));
+						fprintf(listing_file, "%02x\n", ((o -> final_operand) >> 8) & 0x0ff);
 						break;
-				case	R:
-				case	RP:
 				case 	NONE: 
 					default:
 						//printf("\n"); 
@@ -325,7 +335,7 @@ int main(int argc, char *argv[])
 			};
 		
 		o = o -> next;
-	}		
+	}	
 	
 	fprintf(listing_file, "fi\n");
 
