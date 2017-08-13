@@ -16,7 +16,7 @@
 	#define INCLUDE
 #endif
 
-#define ARRAY_SIZE 256
+#define ARRAY_SIZE 244
 #define	BEFORE	(-1)
 #define AFTER	1
 
@@ -294,15 +294,18 @@ instruction BinarySearch(char *line)
 		result,					//indicates if binary search should go look ahead or behind of current search_index
 		mnemonic_length,
 		line_length = strlen(line),
-		search_index = ARRAY_SIZE/2;		//index of instruction_set to check
+		search_index;		//index of instruction_set to check
 	
-	double rounded_shift_value = ARRAY_SIZE/2;	//helps to calculate next search index
+	double  exact_search_index = ARRAY_SIZE/2.0,
+		shift_value = ARRAY_SIZE/2.0;	//helps to calculate next search index
 
 	char* mnemonic;
 
 	instruction no_instruction_found = {"no instruction found", 0x20, 0, NONE};
 
-	while(search_index >= 0 && search_index <= ARRAY_SIZE - 1 && rounded_shift_value/2.0 >= 0.55)
+	search_index= exact_search_index;
+
+	while(search_index >= 0 && search_index <= ARRAY_SIZE - 1 && shift_value >= .9)
 	{
 		mnemonic = instruction_set[search_index].mnemonic;
 		mnemonic_length = strlen(mnemonic);
@@ -335,18 +338,18 @@ instruction BinarySearch(char *line)
 			}
 		}
 
-		//takes distance to shift away from current search_index, and adds 0.5 to prepare for rounding
-		//rounding occurs during type conversion from double to int later on	
-		rounded_shift_value = ((double)rounded_shift_value / 2.0) + 0.5;
+		shift_value = shift_value / 2.0;
 	
 		if(result < 0)
 		{
-			search_index = (int)((double)search_index - rounded_shift_value);
+			exact_search_index = exact_search_index - shift_value; // + 0.5;
 		}	
 		else
 		{
-			search_index = (int)((double)search_index + rounded_shift_value);
-		}		
+			exact_search_index = exact_search_index + shift_value; // + 0.5;
+		}
+				
+		search_index = exact_search_index;
 	}
 
 	return no_instruction_found;

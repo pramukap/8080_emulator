@@ -1,7 +1,5 @@
 LETTER EQU 42
 
-ORG 2000
-
 ;Store data to nv data register
 MVI A, LETTER
 STA 3ffd

@@ -36,7 +36,7 @@ buffer 	*b 		= NULL,		//reusable buffer that hold snippets of code
 	*b1		= NULL;
 label *labels 		= NULL;		//linked list of assembly code labels
 output *final 		= NULL;		//array of opcodes + operands that are to be printed to stdout or to a file
-buffer *object_code	= NULL;		//buffer for object code prior to storage in object file
+//buffer *object_code	= NULL;		//buffer for object code prior to storage in object file
 
 int main(int argc, char *argv[])
 {
@@ -232,7 +232,7 @@ int main(int argc, char *argv[])
 				
 				AddOutputNode(strtol(b -> str, NULL, 16), "", ORG_ADDR, &final);
 				
-				location_counter += strtol(b -> str, NULL, 16);
+				location_counter = strtol(b -> str, NULL, 16);
 				
 				break;
 			
@@ -289,7 +289,7 @@ int main(int argc, char *argv[])
 	//printf("Done processing lines and finding label values.\n");
 
 	//process operands into integer values; store opcodes and operands to files
-	object_code = NewBuffer();
+	//object_code = NewBuffer();
 	o = final;
 
 	while(o != NULL)
@@ -317,21 +317,21 @@ int main(int argc, char *argv[])
 			{
 				case 	D8:
 						//Do I need the casting here?
-						AddCharToBuffer(object_code, (uint8_t)((o -> final_operand) & 0x0ff));
-						//fwrite(&(o -> final_operand), sizeof(uint8_t), 1, object_file);
+						//AddCharToBuffer(object_code, (uint8_t)((o -> final_operand) & 0x0ff));
+						fwrite(&(o -> final_operand), sizeof(uint8_t), 1, object_file);
 						fprintf(listing_file, "%02x\n", o -> final_operand);
 						break;
 
 				case	D16:	
 				case	ADDR:
 						
-						//fwrite(&(o -> final_operand), sizeof(uint8_t), 2, object_file);
+						fwrite(&(o -> final_operand), sizeof(uint8_t), 2, object_file);
 						//print the low byte
-						AddCharToBuffer(object_code, (uint8_t)((o -> final_operand) & 0x0ff));
+						//AddCharToBuffer(object_code, (uint8_t)((o -> final_operand) & 0x0ff));
 						fprintf(listing_file, "%02x\n", (o -> final_operand) & 0x0ff);
 		
 						//print the high byte
-						AddCharToBuffer(object_code, (uint8_t)(((o -> final_operand) >> 8) & 0x0ff));
+						//AddCharToBuffer(object_code, (uint8_t)(((o -> final_operand) >> 8) & 0x0ff));
 						fprintf(listing_file, "%02x\n", ((o -> final_operand) >> 8) & 0x0ff);
 						break;
 				
@@ -349,9 +349,11 @@ int main(int argc, char *argv[])
 							o1 = o1 -> next;
 						}
 
-						AddCharToBuffer(object_code, (uint8_t)byte_counter);
-						AddCharToBuffer(object_code, (uint8_t)((o -> opcode) & 0x0ff));
-						AddCharToBuffer(object_code, (uint8_t)(((o -> opcode) >> 8) & 0x0ff));
+						//AddCharToBuffer(object_code, (uint8_t)byte_counter);
+						//AddCharToBuffer(object_code, (uint8_t)((o -> opcode) & 0x0ff));
+						//AddCharToBuffer(object_code, (uint8_t)(((o -> opcode) >> 8) & 0x0ff));
+						fwrite(&(byte_counter), sizeof(uint8_t), 1, object_file);
+						fwrite(&(o -> opcode), sizeof(uint8_t), 2, object_file);
 						fprintf(listing_file, "%02x%04x\n", byte_counter, o -> opcode);
 						break;
 				
