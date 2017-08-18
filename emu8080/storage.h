@@ -20,11 +20,6 @@
 #define STORAGE_ACCESS_RATE	40	//Hz (25 ms)
 #define STORAGE_ACCESS_PERIOD	(CLOCK_RATE / STORAGE_ACCESS_RATE) //Clock Cycles
 
-#define INTERRUPT_ENABLE	0x01
-#define READY			0x02
-#define READ_REQUEST		0x04
-#define WRITE_REQUEST		0x08
-
 FILE *storage = NULL;
 
 void LoadNonVolatileMemory(uint8_t *hard_disk)
@@ -61,14 +56,14 @@ void StoreNonVolatileMemory(uint8_t *hard_disk)
 /*
  * Memory-mapped Nonvolatile Memory Registers
  * 0x3ffc   - Storage Control Register
- * BITS:	3			2			1		0		
- * VALUE:	Write-Request Flag	Read-Request Flag	Ready Flag	Interrupt-Enable
+ * BITS:	4			3			2			1		0		
+ * VALUE:	Interrupt-Handled Flag	Write-Request Flag	Read-Request Flag	Ready Flag	Interrupt-Enable
  * 0x3ffd   - Data Register
  * 0x3ffe/f - Address Registers 
  */
 void NonVolatileMemoryOperation()
 {
-	static int operation_completion_time = INT_MAX;
+	static int storage_op_completion_time = INT_MAX;
 	uint16_t address;
 
 	//if ready, start timer to emulate access-operation, and clear READY to indicate operation is ongoing
@@ -76,39 +71,43 @@ void NonVolatileMemoryOperation()
 	{
 		if(memory[NV_MEM_CTRL_REG] & WRITE_REQUEST || memory[NV_MEM_CTRL_REG] & READ_REQUEST)
 		{
-			operation_completion_time = time + STORAGE_ACCESS_PERIOD;	//current time + time needed for access operation
+			storage_op_completion_time = time + STORAGE_ACCESS_PERIOD;	//current time + time needed for access operation
 		
-			memory[NV_MEM_CTRL_REG] &= ~READY;
+			memory[NV_MEM_CTRL_REG] &= ~(READY | INTERRUPT_HANDLED);
 		}
 	}
 	//if emulated time of operation has passed, do the requested operation
-	else if((memory[NV_MEM_CTRL_REG] & READY) == 0 && time >= operation_completion_time)
+	else if((memory[NV_MEM_CTRL_REG] & READY) == 0 && time >= storage_op_completion_time)
 	{
+		//send an interrupt signal if interrupts are enabled
 		if(memory[NV_MEM_CTRL_REG] & ~INTERRUPT_ENABLE)
 		{
 			interrupt_request = 1;
 		}
 
+		//indicate operation is complete and device can carry out another operation
 		memory[NV_MEM_CTRL_REG] |= READY;
 
 
+		//actual read operation
 		if(memory[NV_MEM_CTRL_REG] & READ_REQUEST)
 		{
 			address = (memory[NV_MEM_ADDR_HIGH] << 8) + memory[NV_MEM_ADDR_LOW];
 			memory[address] = memory[NV_MEM_DATA_REG];
 
 			memory[NV_MEM_CTRL_REG] &= ~READ_REQUEST;
-			operation_completion_time = INT_MAX;
+			storage_op_completion_time = INT_MAX;
 			return;
 		}
 
+		//actual write operation
 		if(memory[NV_MEM_CTRL_REG] & WRITE_REQUEST)
 		{
 			address = (memory[NV_MEM_ADDR_HIGH] << 8) + memory[NV_MEM_ADDR_LOW];
 			hard_disk[address] = memory[NV_MEM_DATA_REG];
 
 			memory[NV_MEM_CTRL_REG] &= ~WRITE_REQUEST;
-			operation_completion_time = INT_MAX;
+			storage_op_completion_time = INT_MAX;
 			return;
 		}
 

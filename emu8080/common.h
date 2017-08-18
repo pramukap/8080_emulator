@@ -39,9 +39,16 @@
 #define H_PAIR			4
 #define PSW			6
 
-#define HARD_DISK_SIZE		64000		//space in non-volatile memory in bytes
-#define MEMORY_SIZE		4000		//space in volatile memory in bytes
+#define HARD_DISK_SIZE		0xffff		//space in non-volatile memory in bytes
+#define ADDRESSED_SPACE_SIZE	0xffff	
+#define MEMORY_START_ADDRESS	0x0000		//volatile memory (0x0000 to 0x2fff) (3 kB)
+#define MEMORY_SIZE		0x3000
+//#define IO_START_ADDRESS	0x3000		//memory-mapped io (0x3000 to 0x3fff)
+//#define IO_SIZE		0x1000
+#define VIDEO_MEM_START_ADDRESS	0x4000		//graphics memory (0x4000 to 0x7fff) (4 kB)	
+#define VIDEO_MEM_SIZE		0x4000
 #define PORTS			256
+
 #define BYTE			8
 #define ALL			0b00011111
 #define NONE			0b00000000
@@ -53,13 +60,25 @@
 #define NV_MEM_ADDR_LOW		0x3ffe
 #define NV_MEM_ADDR_HIGH	0x3fff	
 
+#define KB_CTRL_REG		0x3ff9
+#define KB_DATA_REG		0x3ffa
+
+#define INTERRUPT_ENABLE	0x01
+#define READY			0x02
+#define READ_REQUEST		0x04
+#define WRITE_REQUEST		0x08
+#define INTERRUPT_HANDLED	0x10
+
+
 #define CLOCK_RATE		2500000		//Hz (2.5 MHz = 4 us) 
 
 //HARDWARE---
-extern uint8_t *hard_disk;
-extern uint8_t *memory;
-extern uint8_t *io;
- 
+extern uint8_t 	*address_space,
+		*hard_disk,
+		*memory,
+		*video_memory,
+		*io; 
+
 extern uint8_t register_file[10];
 
 /*
@@ -154,4 +173,15 @@ typedef void (*instruction)(data *input);
 
 extern data instruction_set_data[INSTRUCTION_SET_SIZE];
 extern instruction instruction_set[INSTRUCTION_SET_SIZE];
+
+
+//Enumerated type to detect which device sent an interrupt request
+typedef enum interrupt_request_device
+{
+	STORAGE,
+	KEYBOARD,
+	DISPLAY
+}
+interrupt_device;
+
 

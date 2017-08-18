@@ -18,11 +18,14 @@
 
 #include "instruction_set.h"
 #include "storage.h"
+#include "vt100.h"
 
 //HARDWARE---
-uint8_t *hard_disk;
-uint8_t *memory;
-uint8_t *io;
+uint8_t	*address_space,
+	*hard_disk,
+	*memory,
+	*video_memory,
+	*io;
 
 uint8_t register_file[10];
 
@@ -91,6 +94,7 @@ uint16_t control;
 uint8_t interrupt_enable;
 uint8_t halt_enable;
 uint8_t interrupt_request;
+uint8_t priority;
 //---
 
 //USER INTERFACE---
@@ -120,8 +124,36 @@ uint16_t indicator;
  *
  */ 
 
+void InterruptCheckAndInstructionFetch()
+{
+	if(interrupt_request && interrupt_enable)
+	{
+		interrupt_request--;
 
-void GetProgram(void)
+		switch(		
+
+		//check devices to see if they sent the interrupt signal
+
+		//Storage interrupt handler = RST 02
+		if((memory[NV_MEM_CTRL_REG] & INTERRUPT_ENABLE)  && priority < 1)
+		{
+			instruction_register = 0xd7;
+			return;
+		}
+
+		//Keyboard interrupt handler = RST 03
+		if((memory[KB_CTRL_REG] & INTERRUPT_ENABLE) && priority < 2)
+		{
+			
+		}
+	}
+
+	//printf("Current pc: %2x\n", pc);
+	instruction_register = memory[pc];
+	pc++;
+}
+
+void GetProgram()
 {
 	char buffer[2] = {0}; 		//stores string version of instruction
 	char* ptr = NULL; 		//parameter for strtol
@@ -199,9 +231,12 @@ int main(int argv, char *argc[])
 	time = 0;
 	halt_enable = 0;
 	interrupt_request = 0;
+	priority = 8;
 
 	hard_disk = malloc(HARD_DISK_SIZE * sizeof(uint8_t));
-	memory = malloc(MEMORY_SIZE * sizeof(uint8_t));
+	address_space = malloc(ADDRESSED_SPACE_SIZE * sizeof(uint8_t));
+	memory = address_space + MEMORY_START_ADDRESS;
+	video_memory = address_space + VIDEO_MEM_START_ADDRESS;
 	io = malloc(PORTS * sizeof(uint8_t));
 
 	pc = 0x0000;
@@ -211,28 +246,36 @@ int main(int argv, char *argc[])
 
 	GetProgram();
 
+	StartMonitor();
+	
 	memory[NV_MEM_CTRL_REG] = 0x02;
+
+	
 	
 	while(!halt_enable)
 	{
-		//printf("Current pc: %2x\n", pc);
-		instruction_register = memory[pc];
-		pc += 1;
+		//fetches interrupt vector or next-instruction-in-program to instruction register
+		InterruptCheckAndInstructionFetch();
 
+		//decode - execute - store
 		instruction_set[instruction_register]
 			(&instruction_set_data[instruction_register]);
 
-
 		//printf("Control Register: %x\n", memory[NV_MEM_CTRL_REG]);
+		PrintMachineState();
 		NonVolatileMemoryOperation();		 	
 	}
 	
 	StoreNonVolatileMemory(hard_disk);
 
+	StopMonitor();		
 	DisplayState();
-	
+
 	free(memory);			
 	memory = NULL;
+	
+	free(hard_disk);
+	hard_disk = NULL;
 
 	return 0;
 }
