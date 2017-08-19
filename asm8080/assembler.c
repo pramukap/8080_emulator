@@ -1,10 +1,13 @@
-/****************************************
- * 8080_Assembler v0.0.0		*
- * Pramuka Perera			*
- * July 23, 2017			*
- * Assembler for Intel 8080 Processor	*
- * Supports: Labels			*
- ****************************************/
+/************************************************
+ * 8080_Assembler v0.0.0			*
+ * Pramuka Perera				*
+ * July 23, 2017				*
+ * Assembler for Intel 8080 Processor		*
+ * TODO:					*
+ * 	rework functions to exit in main	*
+ * 	EQU not working properly		*
+ * 	Write DB and DW				*
+ ************************************************/
 
 #ifndef INCLUDE
 	#include <stdlib.h>

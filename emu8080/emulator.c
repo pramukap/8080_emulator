@@ -4,6 +4,10 @@
  * June 23, 2017							*
  * Emulator for the Intel 8080 processor			 	*
  * Operating at 2.5 MHz							*
+ * TODO:								*
+ *	Finish Display							*
+ *	Test instructions						*
+ *	Refactor							*
  ************************************************************************/
 
 #ifndef INCLUDE
