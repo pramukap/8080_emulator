@@ -124,28 +124,49 @@ uint16_t indicator;
  *
  */ 
 
+interrupt_device interrupt_vector;
+
 void InterruptCheckAndInstructionFetch()
 {
 	if(interrupt_request && interrupt_enable)
 	{
-		interrupt_request--;
+		interrupt_request = 0;
 
-		switch(		
+		switch(interrupt_vector)
+		{
+			case STORAGE_READ:
+					instruction_register = 0xd7;	//RST 02
+					return;
+			case STORAGE_WRITE:
+					instruction_register = 0xdf;	//RST 03
+					return;
+			case KEYBOARD:
+					instruction_register = 0xe7;	//RST 04
+					return;
+			case DISPLAY:
+					instruction_register = 0xef;	//RST 05
+					return;
+			case NO_INTERRUPT: 
+			default:
+					break;
+		};		
 
+		/*
 		//check devices to see if they sent the interrupt signal
 
 		//Storage interrupt handler = RST 02
-		if((memory[NV_MEM_CTRL_REG] & INTERRUPT_ENABLE)  && priority < 1)
+		if(memory[NV_MEM_CTRL_REG] & INTERRUPT_ENABLE)
 		{
 			instruction_register = 0xd7;
 			return;
 		}
 
 		//Keyboard interrupt handler = RST 03
-		if((memory[KB_CTRL_REG] & INTERRUPT_ENABLE) && priority < 2)
+		if(memory[KB_CTRL_REG] & INTERRUPT_ENABLE) 
 		{
 			
 		}
+		*/
 	}
 
 	//printf("Current pc: %2x\n", pc);
@@ -224,9 +245,12 @@ void DisplayState()
 
 	printf("Status:\n");
 	printf("PC: %04x SP: %04x Flags: %02x\n", pc, sp, status[0]);  
+
+	printf("Storage:\n");
+	printf("CTRL: %02x DATA: %02x ADDR:%02x%02x\n", memory[NV_MEM_CTRL_REG], memory[NV_MEM_DATA_REG], memory[NV_MEM_ADDR_HIGH], memory[NV_MEM_ADDR_LOW]);
 }
 
-int main(int argv, char *argc[])
+int main()
 {
 	time = 0;
 	halt_enable = 0;
@@ -241,12 +265,13 @@ int main(int argv, char *argc[])
 
 	pc = 0x0000;
 	status[0] = 0;
-
+	interrupt_vector = NO_INTERRUPT;
+	
 	LoadNonVolatileMemory(hard_disk);
 
 	GetProgram();
 
-	StartMonitor();
+	//StartMonitor();
 	
 	memory[NV_MEM_CTRL_REG] = 0x02;
 
@@ -258,8 +283,8 @@ int main(int argv, char *argc[])
 		InterruptCheckAndInstructionFetch();
 
 		//decode - execute - store
-		instruction_set[instruction_register]
-			(&instruction_set_data[instruction_register]);
+		instruction_set[instruction_register]			//calls the instruction-emulating function
+			(&instruction_set_data[instruction_register]);	//passes references to data needed to carry out instruction
 
 		//printf("Control Register: %x\n", memory[NV_MEM_CTRL_REG]);
 		PrintMachineState();
@@ -277,6 +302,6 @@ int main(int argv, char *argc[])
 	free(hard_disk);
 	hard_disk = NULL;
 
-	return 0;
+	return EXIT_SUCCESS;
 }
 

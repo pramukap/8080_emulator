@@ -20,6 +20,7 @@
 #define STORAGE_ACCESS_RATE	40	//Hz (25 ms)
 #define STORAGE_ACCESS_PERIOD	(CLOCK_RATE / STORAGE_ACCESS_RATE) //Clock Cycles
 
+
 FILE *storage = NULL;
 
 void LoadNonVolatileMemory(uint8_t *hard_disk)
@@ -61,6 +62,115 @@ void StoreNonVolatileMemory(uint8_t *hard_disk)
  * 0x3ffd   - Data Register
  * 0x3ffe/f - Address Registers 
  */
+
+void NonVolatileMemoryOperation()
+{
+	static int storage_op_completion_time = INT_MAX;
+	static io_state storage_state = READY;
+	uint16_t address;
+
+	switch(storage_state)
+	{
+		case READY: 
+				if(memory[NV_MEM_CTRL_REG] & READ_REQUEST)
+				{
+					//state output
+					storage_op_completion_time = time + STORAGE_ACCESS_PERIOD;
+					memory[NV_MEM_CTRL_REG] &= ~RDY;
+
+					//next state
+					storage_state = READING;
+				}
+				else if(memory[NV_MEM_CTRL_REG] & WRITE_REQUEST)
+				{
+					//state output
+					storage_op_completion_time = time + STORAGE_ACCESS_PERIOD;
+					memory[NV_MEM_CTRL_REG] &= ~RDY;
+					
+					//next state
+					storage_state = WRITING;
+				}
+
+					//otherwise state = READY
+				break;
+		case READING:
+				if(time >= storage_op_completion_time)
+				{
+					//state output
+					address = (memory[NV_MEM_ADDR_HIGH] << 8) + memory[NV_MEM_ADDR_LOW];
+					memory[address] = memory[NV_MEM_DATA_REG];
+					storage_op_completion_time = INT_MAX;
+
+					memory[NV_MEM_CTRL_REG] |= DONE;
+					//next state
+					storage_state = OP_COMPLETE;
+
+					if(memory[NV_MEM_CTRL_REG] & INTERRUPT_ENABLE)
+					{
+						interrupt_request = 1;
+						interrupt_vector = STORAGE_READ;
+						storage_state = INTERRUPT;
+					}
+				}
+			
+				break;
+		case WRITING:
+				if(time >= storage_op_completion_time)
+				{
+					//state output
+					address = (memory[NV_MEM_ADDR_HIGH] << 8) + memory[NV_MEM_ADDR_LOW];
+					hard_disk[address] = memory[NV_MEM_DATA_REG];
+
+					memory[NV_MEM_CTRL_REG] |= DONE;
+					storage_op_completion_time = INT_MAX;
+
+					//next state
+					storage_state = OP_COMPLETE;
+
+					if(memory[NV_MEM_CTRL_REG] & INTERRUPT_ENABLE)
+					{
+						interrupt_request = 1;
+						interrupt_vector = STORAGE_WRITE;
+						storage_state = INTERRUPT;
+					}
+				}
+				break;
+		case INTERRUPT:
+				if(memory[NV_MEM_CTRL_REG] & DONE)
+				{
+					//state output
+					interrupt_request = 1;
+					interrupt_vector = (memory[NV_MEM_CTRL_REG] & READ_REQUEST) ? STORAGE_READ : STORAGE_WRITE;
+
+					//state = INTERRUPT 
+				}
+				else
+				{
+					//state output
+					memory[NV_MEM_CTRL_REG] |= RDY;
+					memory[NV_MEM_CTRL_REG] &= ~(WRITE_REQUEST | READ_REQUEST);
+					
+					//next state
+					storage_state = READY;
+				}
+				break;
+		case OP_COMPLETE:
+				if((memory[NV_MEM_CTRL_REG] & DONE) == 0)
+				{
+					//state output
+					memory[NV_MEM_CTRL_REG] |= RDY;
+					memory[NV_MEM_CTRL_REG] &= ~(WRITE_REQUEST | READ_REQUEST);
+
+					//next state
+					storage_state = READY; 
+				}
+				break;
+		default: 
+				break;
+	};
+}
+
+/*
 void NonVolatileMemoryOperation()
 {
 	static int storage_op_completion_time = INT_MAX;
@@ -113,4 +223,4 @@ void NonVolatileMemoryOperation()
 
 	} 
 }
-
+*/

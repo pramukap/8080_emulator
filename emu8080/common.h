@@ -64,11 +64,10 @@
 #define KB_DATA_REG		0x3ffa
 
 #define INTERRUPT_ENABLE	0x01
-#define READY			0x02
+#define RDY			0x02
 #define READ_REQUEST		0x04
 #define WRITE_REQUEST		0x08
-#define INTERRUPT_HANDLED	0x10
-
+#define DONE			0x10
 
 #define CLOCK_RATE		2500000		//Hz (2.5 MHz = 4 us) 
 
@@ -178,10 +177,22 @@ extern instruction instruction_set[INSTRUCTION_SET_SIZE];
 //Enumerated type to detect which device sent an interrupt request
 typedef enum interrupt_request_device
 {
-	STORAGE,
-	KEYBOARD,
-	DISPLAY
+	NO_INTERRUPT	= 0x00, 
+	STORAGE_WRITE 	= 0xd7,
+	STORAGE_READ	= 0xdf,
+	KEYBOARD	= 0xe7,
+	DISPLAY 	= 0xef
 }
 interrupt_device;
 
+extern interrupt_device interrupt_vector; 
 
+typedef enum io_operation_state
+{
+	READY,
+	READING,
+	WRITING,
+	INTERRUPT,
+	OP_COMPLETE
+}
+io_state;
