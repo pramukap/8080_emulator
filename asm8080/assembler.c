@@ -4,9 +4,10 @@
  * July 23, 2017				*
  * Assembler for Intel 8080 Processor		*
  * TODO:					*
- * 	rework functions to exit in main	*
+ * 	Rework functions to exit in main	*
  * 	EQU not working properly		*
  * 	Write DB and DW				*
+ *	Start addres + total # of bytes		*
  ************************************************/
 
 #ifndef INCLUDE
@@ -61,15 +62,6 @@ int main(int argc, char *argv[])
 	
 	void	*temporary_ptr = NULL;	
 	
-	/*
-	//obtain asm and object filenames
-	if(argc < 3)
-	{
-		printf("You didn't give me an assembly file and a target file.\nI'm gonna leave now :P\n");
-		exit(0);
-	}
-	*/
-
 	//open asm, object, and listing files
 	if(argc < 3)
 	{
@@ -122,13 +114,17 @@ int main(int argc, char *argv[])
 	}
 	assembly_code[code_index] = '\0';
 
-	//printf("Done storing code\n");
+	printf("Done storing code\n");
 
 	//process the assembly_code buffer to produce an line token array (lines) and a linked list of labels (labels)
 	//NOTE: all labels and lines are null-terminated
 	//code_index = 0;
 
-	b = NewBuffer();	//buffer to store snippets of code from the assembly_code buffer
+	//b = NewBuffer();	//buffer to store snippets of code from the assembly_code buffer
+	if(AddCharToBuffer(&b, ' ') == EXIT_FAILURE)
+	{
+		exit(EXIT_FAILURE);
+	}
 
 	for(code_index = 0; code_index < code_size; code_index++)
 	{
@@ -144,7 +140,10 @@ int main(int argc, char *argv[])
 			}
 
 			//cap the string with a null terminator	
-			AddCharToBuffer(b, '\0');
+			if(AddCharToBuffer(&b, '\0') == EXIT_FAILURE)
+			{
+				exit(EXIT_FAILURE);
+			}
 			
 			//Clear away whitespace from the front of the label	
 			while((b -> str)[0] == ' ' || (b -> str)[0] == TAB)
@@ -170,12 +169,16 @@ int main(int argc, char *argv[])
 			}
 			*/
 		
-			AddLabelNode(&labels, b -> str, 0x10000, line_index);			
+			if(AddLabelNode(&labels, b -> str, 0x10000, line_index) == EXIT_FAILURE)
+			{
+				exit(EXIT_FAILURE);
+			}			
 			//printf("Label: %s\n", (labels -> last_node) -> label);
 	
 			//New buffer for the next label or line
-			b = NewBuffer();
-
+			//b = NewBuffer();
+			ResetBuffer(&b);
+			
 			continue;
 		}
 		
@@ -183,7 +186,10 @@ int main(int argc, char *argv[])
 		if(c == NEWLINE || c == ';')
 		{
 			//cap the string with a null terminator
-			AddCharToBuffer(b, '\0');
+			if(AddCharToBuffer(&b, '\0') == EXIT_FAILURE)
+			{
+				exit(EXIT_FAILURE);
+			}
 			
 			//first char in the buffer should be a null or a lowercase letter	
 			while(((b -> str)[0] > '\0' && (b -> str)[0] < 'a') ||  (b -> str)[0] > 'z' )
@@ -191,7 +197,10 @@ int main(int argc, char *argv[])
 				ShiftBufferContentsLeft(b);
 			}
 			
-			AddLineToken(b -> str, b -> length, line_index, line_array_size, &lines);
+			if(AddLineToken(b -> str, b -> length, line_index, line_array_size, &lines) == EXIT_FAILURE)
+			{
+				exit(EXIT_FAILURE);
+			}
 			
 			//printf("Line Token #%i: %s\n", line_index, lines[line_index].line);
 
@@ -199,8 +208,9 @@ int main(int argc, char *argv[])
 			line_array_size++;			
 
 			//New Buffer for the next label or line
-			b = NewBuffer();
-			
+			//b = NewBuffer();
+			ResetBuffer(&b);	
+		
 			//throw away any comments on the current line	
 			while(c == ';' && assembly_code[code_index] != NEWLINE)
 			{
@@ -210,20 +220,32 @@ int main(int argc, char *argv[])
 			continue;
 		}  		
 
-		AddCharToBuffer(b, ToLower(c));	
+		if(AddCharToBuffer(&b, ToLower(c)) == EXIT_FAILURE)
+		{
+			exit(EXIT_FAILURE);
+		}	
 	}
 
-	//printf("Done processing code into labels and lines\n");
+	printf("Done processing code into labels and lines\n");
 
 	//look for pseudo-instructions, instructions, and operands in lines and assign values to labels
-	b1 = NewBuffer();
+	//b1 = NewBuffer();
 
 	for(line_index = 0; line_index < line_array_size && not_end; line_index++)
 	{
-		b -> length = strlen(lines[line_index].line);
-		b -> str = malloc((b -> length) * sizeof(char));
-		strcpy(b -> str, lines[line_index].line);
-		
+		if(CopyStringToEmptyBuffer(&b, lines[line_index].line) == EXIT_FAILURE)
+		{
+			exit(EXIT_FAILURE);
+		}
+		//b -> length = strlen(lines[line_index].line);
+		//b -> str = malloc((b -> length) * sizeof(char));
+		//strcpy(b -> str, lines[line_index].line);
+	
+		if(AddCharToBuffer(&b1, ' ') == EXIT_FAILURE)	//ensure b1 is initialized
+		{
+			exit(EXIT_FAILURE);
+		}
+	
 		//find pseudo-instruction
 		switch(FindPseudoInstruction(b -> str))
 		{
@@ -233,17 +255,23 @@ int main(int argc, char *argv[])
 					ShiftBufferContentsLeft(b);
 				}
 				
-				AddOutputNode(strtol(b -> str, NULL, 16), "", ORG_ADDR, &final);
+				if(AddOutputNode(strtol(b -> str, NULL, 16), "", ORG_ADDR, &final) == EXIT_FAILURE)
+				{
+					exit(EXIT_FAILURE);
+				}
 				
-				location_counter = strtol(b -> str, NULL, 16);
+				location_counter = strtol(b -> str, NULL, 16);	//future label addresses take into account this shift address
 				
 				break;
 			
 			case EQU:
-				//record the label			
+				//record the label in b1			
 				while((b -> str)[0] != ' ' && (b -> str)[0] != TAB)
 				{
-					AddCharToBuffer(b1, (b -> str)[0]);
+					if(AddCharToBuffer(&b1, (b -> str)[0]) == EXIT_FAILURE)
+					{
+						exit(EXIT_FAILURE);
+					}
 					ShiftBufferContentsLeft(b);
 				}
 				
@@ -253,7 +281,10 @@ int main(int argc, char *argv[])
 					ShiftBufferContentsLeft(b);
 				}
 				
-				AddLabelNode(&labels, b1 -> str, strtol(b -> str, NULL, 16), -1);
+				if(AddLabelNode(&labels, b1 -> str, strtol(b -> str, NULL, 16), -1) == EXIT_FAILURE)
+				{
+					exit(EXIT_FAILURE);
+				}
 				
 				break;
 			
@@ -273,7 +304,7 @@ int main(int argc, char *argv[])
 		//find and get the instruction in the line
 		i = BinarySearch(b -> str);
 
-		//an instruction was found	
+		//if an instruction was found	
 		if(i.opcode != 0x20)
 		{
 			//update location_counter to where the next instruction is stored
@@ -285,11 +316,17 @@ int main(int argc, char *argv[])
 			}
 			
 			//output node for the discovered instruction
-			AddOutputNode(i.opcode, b -> str, i.type, &final); 
+			if(AddOutputNode(i.opcode, b -> str, i.type, &final) == EXIT_FAILURE)
+			{
+				exit(EXIT_FAILURE);
+			} 
 		}	
+
+		ResetBuffer(&b);
+		ResetBuffer(&b1);
 	}
 
-	//printf("Done processing lines and finding label values.\n");
+	printf("Done processing lines and finding label values.\n");
 
 	//process operands into integer values; store opcodes and operands to files
 	//object_code = NewBuffer();
@@ -368,8 +405,10 @@ int main(int argc, char *argv[])
 		
 		o = o -> next;
 	}	
-	
+
 	fprintf(listing_file, "fi\n");
+
+	printf("Done!\n");
 
 	//close files and free memory
 	fclose(assembly_file);

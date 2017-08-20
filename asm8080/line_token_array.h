@@ -24,7 +24,7 @@ typedef struct l_token
 }
 token;
 
-void AddLineToken(char* new_line, int new_line_length, int line_index, int num_tokens, token **array)
+int AddLineToken(char* new_line, int new_line_length, int line_index, int num_tokens, token **array)
 {
 	//token *temporary_ptr = *array;
 
@@ -33,23 +33,38 @@ void AddLineToken(char* new_line, int new_line_length, int line_index, int num_t
 		if((*array = malloc(sizeof(token))) == NULL)
 		{
 			printf("Insufficient memory for line token.");
-			exit(EXIT_FAILURE);			
+			return EXIT_FAILURE;			
 		}
 
-		(*array)[line_index].line = new_line;
+		
+		if(((*array)[line_index].line = malloc(new_line_length*sizeof(char))) == NULL)
+		{
+			printf("Failed to allocate line in line token.\n");
+			return EXIT_FAILURE;
+		}
+
+		strcpy((*array)[line_index].line, new_line);
 		(*array)[line_index].line_length = new_line_length;
 
-		return;
+		return EXIT_SUCCESS;
 	}
 	else if((*array = realloc(*array, (num_tokens + 1) * sizeof(token))) == NULL)
 	{
 		printf("Insufficient memory for line token.\n");
 		//Need to free all memory before exiting
-		exit(EXIT_FAILURE);
+		return EXIT_FAILURE;
 	}
 	
-	(*array)[line_index].line = new_line;
+	if(((*array)[line_index].line = malloc(new_line_length*sizeof(char))) == NULL)
+		{
+			printf("Failed to allocate line in line token.\n");
+			return EXIT_FAILURE;
+		}
+
+	strcpy((*array)[line_index].line, new_line);
 	(*array)[line_index].line_length = new_line_length;
+
+	return EXIT_SUCCESS;
 }
 
 void FreeLineTokens(int num_tokens, token **array)

@@ -23,7 +23,7 @@ typedef struct str_buffer
 	int length;
 }
 buffer;
-
+/*
 //Creates an empty buffer
 buffer *NewBuffer(void)
 {
@@ -35,14 +35,14 @@ buffer *NewBuffer(void)
 		exit(EXIT_FAILURE);
 	}
 
-	/*
+	//--Was commented out separately
 	if(((b -> str) = malloc(sizeof(char))) == NULL)
 	{
 		printf("Insufficient memory to allocate a buffer string.\n");
 		free(b);
 		exit(0);
 	}
-	*/
+	//--
 
 	b -> str = NULL;
 	b -> last_char_index = -1;
@@ -50,34 +50,85 @@ buffer *NewBuffer(void)
 
 	return b;
 }
+*/
 
-void AddCharToBuffer(buffer *b, char c)
+int AddCharToBuffer(buffer **b, char c)
 {
-	buffer *temporary_ptr = b;
+	//buffer *temporary_ptr = *b;
 
-	if(b -> str == NULL)
+	if(*b == NULL)
 	{
-		if(((b -> str) = malloc(sizeof(char))) == NULL)
+		if((*b = malloc(sizeof(buffer))) == NULL)
+		{
+			printf("Insufficient memory to allocate a buffer.\n");
+			return EXIT_FAILURE;
+		}
+
+		(*b) -> str = NULL;
+		(*b) -> last_char_index = -1;
+		(*b) -> length = 0;
+	}
+
+	if((*b) -> str == NULL)
+	{
+		if((((*b) -> str) = malloc(sizeof(char))) == NULL)
 		{
 			printf("Insufficient memory to allocate a buffer string.\n");
-			free(b);
-			exit(EXIT_FAILURE);
+			//free(b);
+			return EXIT_FAILURE;
 		}
 	}
-	else if((b -> str = realloc(b -> str, ((b -> length) + 1) * sizeof(char))) == NULL)
+	else if(((*b) -> str = realloc((*b) -> str, (((*b) -> length) + 1) * sizeof(char))) == NULL)
 	{
 		printf("Insufficient memory to allocate a buffer.\n");
 		//free allocated memory
-		free(temporary_ptr);
-		exit(EXIT_FAILURE);
+		//free(temporary_ptr);
+		return EXIT_FAILURE;
 	}
 
-	(b -> last_char_index)++;
+	((*b) -> last_char_index)++;
 
-	(b -> str)[b -> last_char_index] = c;	
+	((*b) -> str)[(*b) -> last_char_index] = c;	
 
-	(b -> length)++;
+	((*b) -> length)++;
 	//(b -> index)++;
+
+	return EXIT_SUCCESS;
+}
+
+int CopyStringToEmptyBuffer(buffer **b, char *str)
+{
+	int str_length = strlen(str) + 1; //length including nullterminator
+	if((*b = malloc(sizeof(buffer))) == NULL)
+	{
+		printf("Failed to allocate buffer.\n");
+		
+		return EXIT_FAILURE;
+	}
+	
+	if((((*b) -> str) = malloc(str_length * sizeof(char))) == NULL)
+	{
+		printf("Failed to allocate buffer string.\n");
+		return EXIT_FAILURE;
+	}
+		
+	strcpy((*b) -> str, str);
+	(*b) -> last_char_index = str_length - 2; //subtact for size and null terminator
+	(*b) -> length = str_length - 1;
+
+	return EXIT_SUCCESS;
+}
+
+void ResetBuffer(buffer **b)
+{
+	if(*b == NULL)
+	{
+		return;
+	}
+
+	free((*b) -> str);
+	free(*b);
+	*b = NULL;
 }
 
 //Converts uppercase letter to a lowercase letter

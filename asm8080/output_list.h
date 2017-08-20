@@ -27,14 +27,15 @@ typedef struct output_node
 }
 output;
 
-void AddOutputNode(int new_opcode, char *new_operand, operand_type new_operand_type, output **head)
+int AddOutputNode(int new_opcode, char *new_operand, operand_type new_operand_type, output **head)
 {
 	output *new_node;
 
 	if((new_node = malloc(sizeof(output))) == NULL)
 	{
 		printf("Failed to allocate output node.\n");
-		exit(EXIT_FAILURE);
+		
+		return EXIT_FAILURE;
 	}
 
 	new_node -> opcode = new_opcode;
@@ -47,7 +48,8 @@ void AddOutputNode(int new_opcode, char *new_operand, operand_type new_operand_t
 	if((new_node -> operand = malloc((strlen(new_operand) + 1) * sizeof(char))) == NULL)
 	{
 		printf("Failed to allocate string.\n");
-		exit(EXIT_FAILURE);
+		
+		return EXIT_FAILURE;
 	}
 	strcpy(new_node -> operand, new_operand);
 	
@@ -56,11 +58,13 @@ void AddOutputNode(int new_opcode, char *new_operand, operand_type new_operand_t
 		*head = new_node;	
 		new_node -> last = *head;
 		
-		return;
+		return EXIT_SUCCESS;
 	}	
 
 	((*head) -> last) -> next = new_node;
-	(*head) -> last = new_node; 
+	(*head) -> last = new_node;
+
+	return EXIT_SUCCESS; 
 }
 
 void FreeOutputList(output **head)

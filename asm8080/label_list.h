@@ -25,20 +25,20 @@ typedef struct label_node
 }
 label;
 
-void AddLabelNode(label **head, char *new_label, int new_value, int line_index)
+int AddLabelNode(label **head, char *new_label, int new_value, int line_index)
 {
 	label *new_node;
 
 	if((new_node = malloc(sizeof(label))) == NULL)
 	{
 		printf("Couldn't allocate space to save a label node.\n");
-		exit(EXIT_FAILURE);
+		return EXIT_FAILURE;
 	}
 
 	if(((new_node -> label) = malloc((strlen(new_label) + 1) * sizeof(char))) == NULL)
 	{
 		printf("Failed to allocate space for label.\n");
-		exit(EXIT_FAILURE);
+		return EXIT_FAILURE;
 	}
 
 	strcpy(new_node -> label, new_label);	
@@ -52,11 +52,13 @@ void AddLabelNode(label **head, char *new_label, int new_value, int line_index)
 		(*head) = new_node;
 		(*head) -> last = *head;
 
-		return;
+		return EXIT_SUCCESS;
 	}
 
 	((*head) -> last) -> next = new_node;
 	(*head) -> last = new_node;
+
+	return EXIT_SUCCESS;
 }
 
 int AssignLabelValue(int line_index, int value_to_assign, label *head)
