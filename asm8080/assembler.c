@@ -1,14 +1,14 @@
-/************************************************
- * 8080_Assembler v0.0.0			*
- * Pramuka Perera				*
- * July 23, 2017				*
- * Assembler for Intel 8080 Processor		*
- * TODO:					*
- * 	Rework functions to exit in main	*
- * 	EQU not working properly		*
- * 	Write DB and DW				*
- *	Start addres + total # of bytes		*
- ************************************************/
+/********************************************************
+ * 8080_Assembler v0.0.0				*
+ * Pramuka Perera					*
+ * July 23, 2017					*
+ * Assembler for Intel 8080 Processor			*
+ * TODO:						*
+ * 	x Rework functions to exit in main		*
+ * 	  EQU not working properly			*
+ * 	  Write DB and DW				*
+ *	x Obj code Start address + total # of bytes	*
+ ********************************************************/
 
 #ifndef INCLUDE
 	#include <stdlib.h>
@@ -88,12 +88,20 @@ int main(int argc, char *argv[])
 
 	//get and store the source code from input file
 	//NOTE: The assembly_code buffer is not null-terminated
-	if((assembly_code = malloc(sizeof(char))) == NULL)
+
+	//assembly_code = "ORG 0000\n";
+	
+	if((assembly_code = malloc(10 * sizeof(char))) == NULL)
 	{
 		printf("Failed to allocate memory for code buffer.\n");
 		exit(EXIT_FAILURE);
 	}
 	code_size++;
+	
+	strcpy(assembly_code, "ORG 0000\n");
+
+	code_index = 9;
+	code_size = 10;
 
 	while((c = fgetc(assembly_file)) != EOF)
 	{
@@ -104,10 +112,12 @@ int main(int argc, char *argv[])
 		temporary_ptr = assembly_code;
 		if((assembly_code = realloc(assembly_code, (code_size + 1) * sizeof(char))) == NULL)
 		{
-			printf("No more memory to store line token. Please try again.\n");
+			printf("Failed to allocate memory for assembly code buffer.\n");
 			free(temporary_ptr);
+			temporary_ptr = NULL;
 			exit(EXIT_FAILURE);
 		}
+		temporary_ptr = NULL;
 
 		code_index++;
 		code_size++;
