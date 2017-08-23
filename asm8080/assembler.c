@@ -6,8 +6,12 @@
  * TODO:						*
  * 	x Rework functions to exit in main		*
  * 	  EQU not working properly			*
- * 	  Write DB and DW				*
+ * 	  Implement DB and DW				*
  *	x Obj code Start address + total # of bytes	*
+ *	  Implement binary and decimal			*
+ *	  Clean up code					*
+ *	  Fix buffer initialization			*
+ *	  Implement errors for bad assembly code	*
  ********************************************************/
 
 #ifndef INCLUDE
@@ -30,9 +34,9 @@
 //#define	TAB	0x09
 //#define	NEWLINE	0x0a
 
-FILE *assembly_file 	= NULL;	//input source file
-FILE *object_file 	= NULL;	//output containing loader directives and machine-code file
-FILE *listing_file 	= NULL; //output file containing original code and machine code in a readable format
+FILE *assembly_file 	= NULL;		//input source file
+FILE *object_file 	= NULL;		//output containing loader directives and machine-code file
+FILE *listing_file 	= NULL; 	//output file containing original code and machine code in a readable format
 
 char *assembly_code 	= NULL;		//buffer for assembly code drawn from input file
 token *lines 		= NULL;		//array of line tokens (see line_token_array.h for description of line_tokens)
@@ -290,7 +294,9 @@ int main(int argc, char *argv[])
 				{
 					ShiftBufferContentsLeft(b);
 				}
-				
+		
+				ShiftBufferContentsLeft(b1); //clear whitespace from buffer initialization
+		
 				if(AddLabelNode(&labels, b1 -> str, strtol(b -> str, NULL, 16), -1) == EXIT_FAILURE)
 				{
 					exit(EXIT_FAILURE);
@@ -355,7 +361,8 @@ int main(int argc, char *argv[])
 		{
 			o -> final_operand = strtol(o -> operand, NULL, 16);
 		}
-
+		
+		//if the node contains an opcode and operand
 		if(o -> type != ORG_ADDR)
 		{	
 			fwrite(&(o -> opcode), sizeof(uint8_t), 1, object_file); 	

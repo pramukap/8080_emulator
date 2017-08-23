@@ -84,9 +84,11 @@ label FindLabelInOperand(char *operand, label *head)
 	int	i,					//index from which to start looking for the label in the operand
 		label_length,
 		operand_length = strlen(operand),
-		last_char_index = strlen(operand) - 1;	//the last char in the operand
+		last_char_index = strlen(operand) - 1,	//the last char in the operand
+		label_check = 0;
 
-	char	char_after_label;			//if a label is in the operand, this is the char that comes after it
+	char	char_after_label,			//if a label is in the operand, this is the char that comes after it
+		char_before_label;			//if a label is in the operand, this is the char that comes before it
 
 	label 	*label_node = head,
 		no_label_found = {"no l", 0x10000, -1, NULL, NULL}; 
@@ -101,20 +103,42 @@ label FindLabelInOperand(char *operand, label *head)
 			//was the label found in the operand
 			if(strncmp(operand + i, label_node -> label, label_length) == MATCH)
 			{
-				//prevent following type of case: Identified Label: "b", Actual Label: "butt"
+				//prevent following type of case: Identified Label: "n", Actual Label: "noob_noob"
 				if(i + label_length <= last_char_index)
 				{
 					char_after_label = (operand + i + label_length)[0];
 				
-					if(char_after_label == ' ' || char_after_label == 0x09)
+					if(char_after_label == ' ' || char_after_label == TAB)
 					{
-						return *label_node;
+						label_check++;	
 					}
 				}
 				else
 				{
+					label_check++;
+				}
+
+				//prevent following type of case: Identified Label: "abed", Actual Label: "evil_abed"
+				if(i > 0)
+				{
+					char_before_label = (operand + i - 1)[0];
+	
+					if(char_before_label == ' ' || char_after_label == TAB)
+					{
+						label_check++;
+					}
+				}
+				else
+				{
+					label_check++;
+				}
+
+				if(label_check == 2)
+				{
 					return *label_node;
 				}
+
+				label_check = 0;
 			}
 		}
 
