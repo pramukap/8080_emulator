@@ -148,6 +148,11 @@ void ShiftBufferContentsLeft(buffer *b)
 {
 	int i;
 
+	if((b -> length) < 1)
+	{
+		return;
+	}
+
 	for(i = 1; i < (b -> length); i++)
 	{
 		(b -> str)[i-1] = (b -> str)[i];

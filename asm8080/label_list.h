@@ -123,7 +123,7 @@ label FindLabelInOperand(char *operand, label *head)
 				{
 					char_before_label = (operand + i - 1)[0];
 	
-					if(char_before_label == ' ' || char_after_label == TAB)
+					if(char_before_label == ' ' || char_before_label == TAB)
 					{
 						label_check++;
 					}

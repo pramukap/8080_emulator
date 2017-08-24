@@ -21,7 +21,7 @@
 //#define	EQU		  1
 //#define END		  2
 
-#define NUM_PSEUDO	  3	//# of available pseudo-instructions
+#define NUM_PSEUDO	  5	//# of available pseudo-instructions
 
 typedef struct pseudo_instruction_data
 {
@@ -34,6 +34,8 @@ pseudo_data pseudo_instruction_set[NUM_PSEUDO] =
 {
 	{"org", ORG},
 	{"equ", EQU},
+	{"db" ,  DB},
+	{"dw" ,  DW},	
 	{"end", END}
 };
 

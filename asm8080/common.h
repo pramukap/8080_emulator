@@ -15,6 +15,8 @@ typedef enum pseudo_instruction_identifier
 	NO_PSEUDO_FOUND,
 	ORG,
 	EQU,
+	DB,
+	DW,
 	END	
 }
 pseudo_identifier;
@@ -26,7 +28,9 @@ typedef enum operand_type_identifier
 	D8,
 	D16, 
 	ADDR,
-	ORG_ADDR
+	ORG_ADDR,
+	DEFINE_B,
+	DEFINE_W
 }
 operand_type;
 

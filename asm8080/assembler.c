@@ -5,13 +5,15 @@
  * Assembler for Intel 8080 Processor			*
  * TODO:						*
  * 	x Rework functions to exit in main		*
- * 	  EQU not working properly			*
- * 	  Implement DB and DW				*
+ * 	x EQU not working properly			*
+ * 	x Implement DB and DW				*
  *	x Obj code Start address + total # of bytes	*
  *	  Implement binary and decimal			*
  *	  Clean up code					*
- *	  Fix buffer initialization			*
+ *	  Fix buffer object initialization		*
  *	  Implement errors for bad assembly code	*
+ *	  Fix byte counting (ORG)			*
+ *	  Write test.asm and test			*
  ********************************************************/
 
 #ifndef INCLUDE
@@ -56,7 +58,8 @@ int main(int argc, char *argv[])
 		line_index 		= 0,	//index of current line of assembler file
 		location_counter 	= 0,	//memory address at which current instruction is being placed
 		byte_counter		= 0,	//count of bytes for every ORG address
-		not_end			= 1;	//boolean value that is set to 0 when the END pseudo-instruction is detected
+		not_end			= 1,	//boolean value that is set to 0 when the END pseudo-instruction is detected
+		scratch_work		   ;	//variable for doing scratch work
 
 	output 	*o 	= NULL,		//used to access nodes from the output linked list
 		*o1 	= NULL;
@@ -301,9 +304,87 @@ int main(int argc, char *argv[])
 				{
 					exit(EXIT_FAILURE);
 				}
-				
+					
 				break;
-			
+		
+			case DB:
+				//store any label in b1
+				while((b -> str)[0] != ' ' && (b -> str)[0] != TAB)
+				{
+					if(AddCharToBuffer(&b1, (b -> str)[0]) == EXIT_FAILURE)
+					{
+						exit(EXIT_FAILURE);
+					}
+					ShiftBufferContentsLeft(b);
+				}
+				
+				//clear away the whitespace to isolate the number
+				while((b -> str)[0] == ' ' || (b -> str)[0] == TAB)
+				{
+					ShiftBufferContentsLeft(b);
+				}
+		
+				ShiftBufferContentsLeft(b1); //clear whitespace from buffer initialization
+	
+				//check that a label was provided
+				if(strlen(b1 -> str) > 0)
+				{
+					//store label with location at which byte will be stored	
+					if(AddLabelNode(&labels, b1 -> str, location_counter, -1) == EXIT_FAILURE)
+					{
+						exit(EXIT_FAILURE);
+					}
+				}
+
+				//byte will be output to object code	
+				if(AddOutputNode(0x20, b -> str, DEFINE_B, &final) == EXIT_FAILURE)
+				{
+					exit(EXIT_FAILURE);
+				}
+					
+				location_counter++;
+
+				break;	
+				
+			case DW:
+				//store any label in b1
+				while((b -> str)[0] != ' ' && (b -> str)[0] != TAB)
+				{
+					if(AddCharToBuffer(&b1, (b -> str)[0]) == EXIT_FAILURE)
+					{
+						exit(EXIT_FAILURE);
+					}
+					ShiftBufferContentsLeft(b);
+				}
+				
+				//clear away the whitespace to isolate the number
+				while((b -> str)[0] == ' ' || (b -> str)[0] == TAB)
+				{
+					ShiftBufferContentsLeft(b);
+				}
+		
+				ShiftBufferContentsLeft(b1); //clear whitespace from buffer initialization
+	
+				//check that a label was provided
+				if(strlen(b1 -> str) > 0)
+				{
+					//store label with location at which byte will be stored	
+					if(AddLabelNode(&labels, b1 -> str, location_counter, -1) == EXIT_FAILURE)
+					{
+						exit(EXIT_FAILURE);
+					}
+				}
+
+				//byte will be output to object code	
+				if(AddOutputNode(0x20, b -> str, DEFINE_W, &final) == EXIT_FAILURE)
+				{
+					exit(EXIT_FAILURE);
+				}
+					
+				location_counter += 2;
+	
+				break;
+	
 			case END:
 				//set a at_end boolean value to 1; exits for-loop
 				not_end = 0;
@@ -362,8 +443,8 @@ int main(int argc, char *argv[])
 			o -> final_operand = strtol(o -> operand, NULL, 16);
 		}
 		
-		//if the node contains an opcode and operand
-		if(o -> type != ORG_ADDR)
+		//if the node contains a regular instruction
+		if(o -> type != ORG_ADDR && o -> type != DEFINE_B && o -> type != DEFINE_W)
 		{	
 			fwrite(&(o -> opcode), sizeof(uint8_t), 1, object_file); 	
 			fprintf(listing_file, "%02x\n", o -> opcode);
@@ -372,6 +453,7 @@ int main(int argc, char *argv[])
 		//carry out final write task based on operand type	
 		switch(o -> type)
 			{
+				case 	DEFINE_B:
 				case 	D8:
 						//Do I need the casting here?
 						//AddCharToBuffer(object_code, (uint8_t)((o -> final_operand) & 0x0ff));
@@ -379,17 +461,20 @@ int main(int argc, char *argv[])
 						fprintf(listing_file, "%02x\n", o -> final_operand);
 						break;
 
+				case	DEFINE_W:
 				case	D16:	
 				case	ADDR:
-						
-						fwrite(&(o -> final_operand), sizeof(uint8_t), 2, object_file);
 						//print the low byte
 						//AddCharToBuffer(object_code, (uint8_t)((o -> final_operand) & 0x0ff));
-						fprintf(listing_file, "%02x\n", (o -> final_operand) & 0x0ff);
+						scratch_work = (o -> final_operand) & 0x0ff;	
+						fwrite(&(scratch_work), sizeof(uint8_t), 1, object_file);
+						fprintf(listing_file, "%02x\n", scratch_work);
 		
 						//print the high byte
 						//AddCharToBuffer(object_code, (uint8_t)(((o -> final_operand) >> 8) & 0x0ff));
-						fprintf(listing_file, "%02x\n", ((o -> final_operand) >> 8) & 0x0ff);
+						scratch_work = ((o -> final_operand) >> 8) & 0x0ff;	
+						fwrite(&(scratch_work), sizeof(uint8_t), 1, object_file);
+						fprintf(listing_file, "%02x\n", scratch_work);
 						break;
 				
 				case	ORG_ADDR:
@@ -413,10 +498,9 @@ int main(int argc, char *argv[])
 						fwrite(&(o -> opcode), sizeof(uint8_t), 2, object_file);
 						fprintf(listing_file, "%02x%04x\n", byte_counter, o -> opcode);
 						break;
-				
-				case 	NONE: 
+
+				case	NONE: 
 					default:
-						//printf("\n"); 
 						break;
 			};
 		
