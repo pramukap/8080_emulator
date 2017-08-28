@@ -483,20 +483,42 @@ int main(int argc, char *argv[])
 						//count the bytes between this org and the next org
 						while(o1 != NULL)
 						{
-							if(o1 -> type == ORG_ADDR)
+							switch(o1 -> type)
 							{
-								break;
-							}
-							byte_counter++;
-							o1 = o1 -> next;
+								case NONE:
+								case DEFINE_B:
+									byte_counter++;				
+									o1 = o1 -> next;
+									break;
+								
+								case D8:
+								case DEFINE_W:
+									byte_counter += 2;
+									o1 = o1 -> next;
+									break;
+								
+								case D16:
+								case ADDR:
+									byte_counter += 3;
+									o1 = o1 -> next;
+									break;
+
+								case ORG_ADDR:
+									o1 = NULL;
+									break;
+
+								default:
+									o1 = o1 -> next;
+									break;
+							};
 						}
 
-						//AddCharToBuffer(object_code, (uint8_t)byte_counter);
+						//AddCharToBuffer(object_code, (uint_t)byte_counter);
 						//AddCharToBuffer(object_code, (uint8_t)((o -> opcode) & 0x0ff));
 						//AddCharToBuffer(object_code, (uint8_t)(((o -> opcode) >> 8) & 0x0ff));
-						fwrite(&(byte_counter), sizeof(uint8_t), 1, object_file);
+						fwrite(&(byte_counter), sizeof(uint8_t), 2, object_file);
 						fwrite(&(o -> opcode), sizeof(uint8_t), 2, object_file);
-						fprintf(listing_file, "%02x%04x\n", byte_counter, o -> opcode);
+						fprintf(listing_file, "%04x%04x\n", byte_counter, o -> opcode);
 						break;
 
 				case	NONE: 
