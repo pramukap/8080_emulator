@@ -8,6 +8,7 @@
  *	Finish Display							*
  *	Test instructions						*
  *	Refactor							*
+ *	Improve get program						*
  ************************************************************************/
 
 #ifndef INCLUDE
@@ -180,63 +181,96 @@ void InterruptCheckAndInstructionFetch()
 
 void GetProgram()
 {
-	char buffer[2] = {0}; 		//stores string version of instruction
+	char buffer[8] = {0}; 		//stores string version of instruction
 	char* ptr = NULL; 		//parameter for strtol
 	uint8_t num = 0, 		//final int version of instruction
 		not_finished = 1,	//bool indicating if user is done entering input
 		no_memory_overflow = 1;	//bool indicating if user has used up available memory
-	uint32_t i = 0;			//index
+	uint32_t  byte_count = 0,	//number of bytes left for current starting address
+		 address = 0x0000;	//address at which current byte is placed
 
-	printf("All inputs mut be 2 digit hex numbers.\nEnter \"fi\" to finish input.\n");
+	printf("First input must be number of bytes and starting address.\n Following inputs mut be 2 digit hex numbers until byte count is reached.\nEnter \"fi\" to finish input.\n");
 
 	do{
 		buffer[0] = 0;
 		buffer[1] = 0;
+		buffer[2] = 0;
+		buffer[3] = 0;
+		buffer[4] = 0;
+		buffer[5] = 0;
+		buffer[6] = 0;
+		buffer[7] = 0;			
 
-		printf("Address %i/%i: ", i, MEMORY_SIZE-1);
-
-		if(scanf("%2s", buffer) != 1 || buffer[1] == 0) //if the second value in the buffer is 0, than only one character was entered
-		{
-			printf("Invalid Input. Each input must be a 2 digit hex value.\nTry again: ");
-			continue;
+		if(byte_count > 0)
+		{	
+			//provide byte
+			printf("Address %i/%i: ", address, MEMORY_SIZE-1);
+			if(scanf("%2s", buffer) != 1 || buffer[1] == 0) //if the second value in the buffer is 0, than only one character was entered
+			{
+				printf("Invalid Input. Each input must be a 2 digit hex value.\nTry again. ");
+				continue;
+			}
 		}
-
+		else
+		{
+			//provide next byte count and starting address
+			printf("Byte Count and Starting Address: ");
+			if(scanf("%8s", buffer) != 1 || (strcmp(buffer, "fi") != 0 && buffer[7] == 0))
+			{
+				printf("Invalid Input. The starting input must be a byte count and starting address.\nTry again. ");
+				continue;
+			}
+		}
+			
 		if(strcmp(buffer, "fi") == 0)
 		{
 			not_finished = 0;
 			continue;
 		}
 
-		if(i >= MEMORY_SIZE)
+		if(address >= MEMORY_SIZE)
 		{
 			no_memory_overflow = 0;
 			continue;
 		}
 
-		if(!((buffer[0] >= '0' && buffer[0] <= '9') || (buffer[0] >= 'a' && buffer[0] <= 'f') || (buffer[0] >= 'A' && buffer[0] <= 'F')) 
-		|| !((buffer[1] >= '0' && buffer[1] <= '9') || (buffer[1] >= 'a' && buffer[1] <= 'f') || (buffer[1] >= 'A' && buffer[1] <= 'F')))
+		if(buffer[7] == 0)
 		{
-			printf("Invalid input. Each input must be a 2 digit hex value\nTry again: ");
+			if(!((buffer[0] >= '0' && buffer[0] <= '9') || (buffer[0] >= 'a' && buffer[0] <= 'f') || (buffer[0] >= 'A' && buffer[0] <= 'F')) 
+			|| !((buffer[1] >= '0' && buffer[1] <= '9') || (buffer[1] >= 'a' && buffer[1] <= 'f') || (buffer[1] >= 'A' && buffer[1] <= 'F')))
+			{
+				printf("Invalid input. Each input must be a 2 digit hex value\nTry again: ");
+				continue;
+			}
+
+			num = (uint8_t)strtol(buffer, &ptr, 16);
+		
+			memory[address] = num;
+
+			byte_count--;
+			address++;
+		}
+		else
+		{
+			byte_count = (strtol(buffer, NULL, 16) >> 16) & 0x00ffff;
+			address = strtol(buffer, NULL, 16) & 0x00ffff;				
+
+			printf("Byte Count: %i \nAddress: %i \n", byte_count, address);
+
+			if(address >= MEMORY_SIZE)
+			{
+				printf("Please provide a valid address.\nTry again. ");
+			}
+
+			if((address + byte_count - 1) > MEMORY_SIZE)
+			{
+				printf("Byte count (and starting address) exceeds available memory.\nTry again. ");
+			} 
+
 			continue;
 		}
-
-		num = (uint8_t)strtol(buffer, &ptr, 16);
-		
-		memory[i] = num;
-
-		i++;
 	}
 	while(not_finished && no_memory_overflow);
-
-	if(!not_finished)
-	{
-		printf("\nProgram saved to memory. Ready for execution.\n\n");
-	}
-	else if(!no_memory_overflow)
-	{
-		printf("\nProgram is too large to fit in memory.\n");
-		exit(0);
-	}
 }
 
 void DisplayState()
@@ -270,6 +304,8 @@ int main()
 	pc = 0x0000;
 	status[0] = 0;
 	interrupt_vector = NO_INTERRUPT;
+
+	//atexit(DisplayState);
 	
 	LoadNonVolatileMemory(hard_disk);
 
