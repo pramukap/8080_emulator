@@ -91,10 +91,12 @@ uint8_t instruction_register;
 uint32_t time;
 //---
 
-//I/O---
-//Control I/O Signals of 8080
-//SIGNALS - WR'(0) | DBIN(O) | INTE(O) | INT(I) | HOLD ACK(O) | HOLD(I) | WAIT (0) | READY(I) | SYNC(O) | RESET(I) 
-//BIT     - 0      | 1       | 2       | 3      | 4           | 5       | 6        | 7        | 8       | 9
+/*
+ * I/O---
+ * Control I/O Signals of 8080
+ * SIGNALS - WR'(0) | DBIN(O) | INTE(O) | INT(I) | HOLD ACK(O) | HOLD(I) | WAIT (0) | READY(I) | SYNC(O) | RESET(I) 
+ * BIT     - 0      | 1       | 2       | 3      | 4           | 5       | 6        | 7        | 8       | 9
+ */
 uint16_t control;
 uint8_t interrupt_enable;
 uint8_t halt_enable;
@@ -102,15 +104,18 @@ uint8_t interrupt_request;
 uint8_t priority;
 //---
 
-//USER INTERFACE---
-//Signals presented on the 8800 front panel
-//SIGNALS - INTE | PROT | MEMR | INP | M1 | OUT | HLTA | STACK | WO'  | INT(A) | WAIT | HLDA | RESET
-//BIT     - 0    | 1    | 2    | 3   | 4  | 5   | 6    | 7     | 8    | 9      | 10   | 11   | 12
+/*
+ * USER INTERFACE---
+ * Signals presented on the 8800 front panel
+ * SIGNALS - INTE | PROT | MEMR | INP | M1 | OUT | HLTA | STACK | WO'  | INT(A) | WAIT | HLDA | RESET
+ * BIT     - 0    | 1    | 2    | 3   | 4  | 5   | 6    | 7     | 8    | 9      | 10   | 11   | 12
+ */
 uint16_t indicator;
 //---
 //---
 
-/* Memory-mapped Nonvolatile Memory Registers
+/*
+ * Memory-mapped Nonvolatile Memory Registers
  * 0x3ffc - Storage Control Register
  * BITS:	3			2			1		0		
  * VALUE:	Write-Request Flag	Read-Request Flag	Ready Flag	Interrupt-Enable
@@ -133,45 +138,27 @@ interrupt_device interrupt_vector;
 
 void InterruptCheckAndInstructionFetch()
 {
-	if(interrupt_request && interrupt_enable)
+	if (interrupt_request && interrupt_enable)
 	{
 		interrupt_request = 0;
 
-		switch(interrupt_vector)
-		{
-			case STORAGE_READ:
-					instruction_register = 0xd7;	//RST 02
-					return;
-			case STORAGE_WRITE:
-					instruction_register = 0xdf;	//RST 03
-					return;
-			case KEYBOARD:
-					instruction_register = 0xe7;	//RST 04
-					return;
-			case DISPLAY:
-					instruction_register = 0xef;	//RST 05
-					return;
-			case NO_INTERRUPT: 
-			default:
-					break;
-		};		
-
-		/*
-		//check devices to see if they sent the interrupt signal
-
-		//Storage interrupt handler = RST 02
-		if(memory[NV_MEM_CTRL_REG] & INTERRUPT_ENABLE)
-		{
-			instruction_register = 0xd7;
+		switch (interrupt_vector){
+		case STORAGE_READ:
+			instruction_register = 0xd7;	//RST 02
 			return;
-		}
-
-		//Keyboard interrupt handler = RST 03
-		if(memory[KB_CTRL_REG] & INTERRUPT_ENABLE) 
-		{
-			
-		}
-		*/
+		case STORAGE_WRITE:
+			instruction_register = 0xdf;	//RST 03
+			return;
+		case KEYBOARD:
+			instruction_register = 0xe7;	//RST 04
+			return;
+		case DISPLAY:
+			instruction_register = 0xef;	//RST 05
+			return;
+		case NO_INTERRUPT: 
+		default:
+			break;
+		};		
 	}
 
 	//printf("Current pc: %2x\n", pc);
@@ -182,16 +169,19 @@ void InterruptCheckAndInstructionFetch()
 void GetProgram()
 {
 	char buffer[8] = {0}; 		//stores string version of instruction
+
 	char* ptr = NULL; 		//parameter for strtol
+
 	uint8_t num = 0, 		//final int version of instruction
 		not_finished = 1,	//bool indicating if user is done entering input
 		no_memory_overflow = 1;	//bool indicating if user has used up available memory
-	uint32_t  byte_count = 0,	//number of bytes left for current starting address
+
+	uint32_t byte_count = 0,	//number of bytes left for current starting address
 		 address = 0x0000;	//address at which current byte is placed
 
 	printf("First input must be number of bytes and starting address.\n Following inputs mut be 2 digit hex numbers until byte count is reached.\nEnter \"fi\" to finish input.\n");
 
-	do{
+	do {
 		buffer[0] = 0;
 		buffer[1] = 0;
 		buffer[2] = 0;
@@ -201,44 +191,39 @@ void GetProgram()
 		buffer[6] = 0;
 		buffer[7] = 0;			
 
-		if(byte_count > 0)
-		{	
-			//provide byte
+		if (byte_count > 0){	
 			printf("Address %i/%i: ", address, MEMORY_SIZE-1);
-			if(scanf("%2s", buffer) != 1 || buffer[1] == 0) //if the second value in the buffer is 0, than only one character was entered
-			{
-				printf("Invalid Input. Each input must be a 2 digit hex value.\nTry again. ");
+
+			//if the second value in the buffer is 0, than only one character was entered
+			if (scanf("%2s", buffer) != 1 || buffer[1] == 0){
+				printf("Invalid Input. The expected input is a 2 digit hex value.\nTry again. ");
 				continue;
 			}
-		}
-		else
-		{
-			//provide next byte count and starting address
+		} 
+		else {
 			printf("Byte Count and Starting Address: ");
-			if(scanf("%8s", buffer) != 1 || (strcmp(buffer, "fi") != 0 && buffer[7] == 0))
-			{
-				printf("Invalid Input. The starting input must be a byte count and starting address.\nTry again. ");
+
+			//provide next byte count and starting address
+			if (scanf("%8s", buffer) != 1 || (strcmp(buffer, "fi") != 0 && buffer[7] == 0)){
+				printf("Invalid Input. The expected input is a byte count and starting address.\nTry again. ");
 				continue;
 			}
 		}
 			
-		if(strcmp(buffer, "fi") == 0)
-		{
+		if (strcmp(buffer, "fi") == 0){
 			not_finished = 0;
 			continue;
 		}
 
-		if(address >= MEMORY_SIZE)
-		{
+		if (address >= MEMORY_SIZE){
 			no_memory_overflow = 0;
 			continue;
 		}
 
-		if(buffer[7] == 0)
-		{
-			if(!((buffer[0] >= '0' && buffer[0] <= '9') || (buffer[0] >= 'a' && buffer[0] <= 'f') || (buffer[0] >= 'A' && buffer[0] <= 'F')) 
-			|| !((buffer[1] >= '0' && buffer[1] <= '9') || (buffer[1] >= 'a' && buffer[1] <= 'f') || (buffer[1] >= 'A' && buffer[1] <= 'F')))
-			{
+		//check if 2 char input is a hex value
+		if (buffer[7] == 0){
+			if (!((buffer[0] >= '0' && buffer[0] <= '9') || (buffer[0] >= 'a' && buffer[0] <= 'f') || (buffer[0] >= 'A' && buffer[0] <= 'F')) 
+			|| !((buffer[1] >= '0' && buffer[1] <= '9') || (buffer[1] >= 'a' && buffer[1] <= 'f') || (buffer[1] >= 'A' && buffer[1] <= 'F'))){
 				printf("Invalid input. Each input must be a 2 digit hex value\nTry again: ");
 				continue;
 			}
@@ -250,27 +235,24 @@ void GetProgram()
 			byte_count--;
 			address++;
 		}
-		else
-		{
+		//get 16-bit byte_count and 16-bit address 
+		else {
 			byte_count = (strtol(buffer, NULL, 16) >> 16) & 0x00ffff;
 			address = strtol(buffer, NULL, 16) & 0x00ffff;				
 
 			printf("Byte Count: %i \nAddress: %i \n", byte_count, address);
 
-			if(address >= MEMORY_SIZE)
-			{
+			if (address >= MEMORY_SIZE){
 				printf("Please provide a valid address.\nTry again. ");
 			}
 
-			if((address + byte_count - 1) > MEMORY_SIZE)
-			{
+			if ((address + byte_count - 1) > MEMORY_SIZE){
 				printf("Byte count (and starting address) exceeds available memory.\nTry again. ");
 			} 
 
 			continue;
 		}
-	}
-	while(not_finished && no_memory_overflow);
+	} while (not_finished && no_memory_overflow);
 }
 
 void DisplayState()
@@ -317,8 +299,7 @@ int main()
 
 	
 	
-	while(!halt_enable)
-	{
+	while (!halt_enable){
 		//fetches interrupt vector or next-instruction-in-program to instruction register
 		InterruptCheckAndInstructionFetch();
 

@@ -182,8 +182,7 @@ typedef enum interrupt_request_device
 	STORAGE_READ	= 0xdf,
 	KEYBOARD	= 0xe7,
 	DISPLAY 	= 0xef
-}
-interrupt_device;
+} interrupt_device;
 
 extern interrupt_device interrupt_vector; 
 
@@ -194,5 +193,4 @@ typedef enum io_operation_state
 	WRITING,
 	INTERRUPT,
 	OP_COMPLETE
-}
-io_state;
+} io_state;
