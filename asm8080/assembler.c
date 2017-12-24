@@ -8,12 +8,13 @@
  * 	x EQU not working properly			*
  * 	x Implement DB and DW				*
  *	x Obj code Start address + total # of bytes	*
- *	  Implement binary and decimal			*
+ *	  Implement binary, decimal, ascii char		*
  *	  Clean up code					*
  *	  Fix buffer object initialization		*
  *	  Implement errors for bad assembly code	*
- *	  Fix byte counting (ORG)			*
+ *	x Fix byte counting (ORG)			*
  *	  Write test.asm and test			*
+ *	  Create a better byte counting scheme		*
  ********************************************************/
 
 #ifndef INCLUDE
@@ -59,7 +60,7 @@ int main(int argc, char *argv[])
 		location_counter 	= 0,	//memory address at which current instruction is being placed
 		byte_counter		= 0,	//count of bytes for every ORG address
 		not_end			= 1,	//boolean value that is set to 0 when the END pseudo-instruction is detected
-		scratch_work		   ;	//variable for doing scratch work
+		scratch_work		   ;	
 
 	output 	*o 	= NULL,		//used to access nodes from the output linked list
 		*o1 	= NULL;
@@ -82,11 +83,13 @@ int main(int argc, char *argv[])
 		printf("Failed to open assembly file.\n");
 		exit(EXIT_FAILURE);
 	}
+
 	if((object_file = fopen(argv[2], "w")) == NULL)
 	{
 		printf("Failed to open object file.\n");
 		exit(EXIT_FAILURE);
 	}
+
 	if((listing_file = fopen(strcat(argv[2],".list"), "w")) == NULL)
 	{
 		printf("Failed to open assembly file\n");
@@ -110,6 +113,7 @@ int main(int argc, char *argv[])
 	code_index = 9;
 	code_size = 10;
 
+	//store assembly code to assembly_code buffer
 	while((c = fgetc(assembly_file)) != EOF)
 	{
 		assembly_code[code_index] = c;

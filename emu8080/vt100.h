@@ -55,66 +55,66 @@ void ReadKeyboardInput()
 	static int kb_op_completion_time = INT_MAX;
 	static io_state kb_state;
 
-	switch(kb_state)
+	switch (kb_state)
 	{
-		case READY:
-				if(memory[KB_CTRL_REG] & READ_REQUEST)
-				{
-					//state output
-					kb_op_completion_time = time + KB_READ_PERIOD;
-					memory[KB_CTRL_REG] &= ~RDY;
+	case READY:
+		if(memory[KB_CTRL_REG] & READ_REQUEST)
+		{
+			//state output
+			kb_op_completion_time = time + KB_READ_PERIOD;
+			memory[KB_CTRL_REG] &= ~RDY;
 				
-					//next state	
-					kb_state = READING;						
-				}
-				break;
-		case READING:
-				if(time >= kb_op_completion_time)
-				{
-					//state output
-					if((memory[KB_DATA_REG] = getchar()) != ERR)
-					{
-						kb_op_completion_time = INT_MAX;
-						memory[KB_CTRL_REG] |= DONE;
+			//next state	
+			kb_state = READING;						
+		}
+		break;
+	case READING:
+		if(time >= kb_op_completion_time)
+		{
+			//state output
+			if((memory[KB_DATA_REG] = getchar()) != ERR)
+			{
+				kb_op_completion_time = INT_MAX;
+				memory[KB_CTRL_REG] |= DONE;
 
-						//next state
-						kb_state = OP_COMPLETE;
+				//next state
+				kb_state = OP_COMPLETE;
 						
-						if(memory[KB_CTRL_REG] & INTERRUPT_ENABLE)
-						{
-							interrupt_request = 1;
-							interrupt_vector = KEYBOARD;
-							
-							kb_state = INTERRUPT;
-						}
-					}
-				}
-				break;
-		case INTERRUPT:
-				if(memory[KB_CTRL_REG] & DONE)
+				if(memory[KB_CTRL_REG] & INTERRUPT_ENABLE)
 				{
 					interrupt_request = 1;
 					interrupt_vector = KEYBOARD;
+							
+					kb_state = INTERRUPT;
 				}
-				else
-				{
-					memory[KB_CTRL_REG] |= RDY;
-					memory[KB_CTRL_REG] &= ~READ_REQUEST;
+			}
+		}
+		break;
+	case INTERRUPT:
+		if(memory[KB_CTRL_REG] & DONE)
+		{
+			interrupt_request = 1;
+			interrupt_vector = KEYBOARD;
+		}
+		else
+		{
+			memory[KB_CTRL_REG] |= RDY;
+			memory[KB_CTRL_REG] &= ~READ_REQUEST;
 
-					kb_state = READY;
-				}
-				break;
-		case OP_COMPLETE:
-				if((memory[NV_MEM_CTRL_REG] & DONE) == 0)
-				{
-					memory[KB_CTRL_REG] |= RDY;
-					memory[KB_CTRL_REG] &= ~READ_REQUEST;
+			kb_state = READY;
+		}
+		break;
+	case OP_COMPLETE:
+		if((memory[NV_MEM_CTRL_REG] & DONE) == 0)
+		{
+			memory[KB_CTRL_REG] |= RDY;
+			memory[KB_CTRL_REG] &= ~READ_REQUEST;
 
-					kb_state = READY;
-				}				
-				break;
-		default:
-				break;
+			kb_state = READY;
+		}				
+		break;
+	default:
+		break;
 	};	
 	/*
 	if(memory[KB_CTRL_REG] & READY)

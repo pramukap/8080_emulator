@@ -8,6 +8,10 @@ SHELL = /bin/sh
 all:emu asm
 	
 emu:
-	make -C ~/src/8080_emulator/emu8080
+	(cd emu8080; $(MAKE))
+
 asm:
-	make -C ~/src/8080_emulator/asm8080
+	(cd asm8080; $(MAKE))
+
+clean:
+	rm emu; rm asm

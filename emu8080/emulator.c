@@ -179,9 +179,10 @@ void GetProgram()
 	uint32_t byte_count = 0,	//number of bytes left for current starting address
 		 address = 0x0000;	//address at which current byte is placed
 
-	printf("First input must be number of bytes and starting address.\n Following inputs mut be 2 digit hex numbers until byte count is reached.\nEnter \"fi\" to finish input.\n");
+	printf("First input must be number of bytes and starting address.\nFollowing inputs mut be 2 digit hex numbers until byte count is reached.\nEnter \"fi\" to finish input.\n");
 
-	do {
+	do
+	{
 		buffer[0] = 0;
 		buffer[1] = 0;
 		buffer[2] = 0;
@@ -191,39 +192,47 @@ void GetProgram()
 		buffer[6] = 0;
 		buffer[7] = 0;			
 
-		if (byte_count > 0){	
+		if(byte_count > 0)
+		{	
 			printf("Address %i/%i: ", address, MEMORY_SIZE-1);
 
 			//if the second value in the buffer is 0, than only one character was entered
-			if (scanf("%2s", buffer) != 1 || buffer[1] == 0){
+			if(scanf("%2s", buffer) != 1 || buffer[1] == 0)
+			{
 				printf("Invalid Input. The expected input is a 2 digit hex value.\nTry again. ");
 				continue;
 			}
 		} 
-		else {
+		else 
+		{
 			printf("Byte Count and Starting Address: ");
 
 			//provide next byte count and starting address
-			if (scanf("%8s", buffer) != 1 || (strcmp(buffer, "fi") != 0 && buffer[7] == 0)){
+			if(scanf("%8s", buffer) != 1 || (strcmp(buffer, "fi") != 0 && buffer[7] == 0))
+			{
 				printf("Invalid Input. The expected input is a byte count and starting address.\nTry again. ");
 				continue;
 			}
 		}
 			
-		if (strcmp(buffer, "fi") == 0){
+		if(strcmp(buffer, "fi") == 0)
+		{
 			not_finished = 0;
 			continue;
 		}
 
-		if (address >= MEMORY_SIZE){
+		if(address >= MEMORY_SIZE)
+		{
 			no_memory_overflow = 0;
 			continue;
 		}
 
 		//check if 2 char input is a hex value
-		if (buffer[7] == 0){
-			if (!((buffer[0] >= '0' && buffer[0] <= '9') || (buffer[0] >= 'a' && buffer[0] <= 'f') || (buffer[0] >= 'A' && buffer[0] <= 'F')) 
-			|| !((buffer[1] >= '0' && buffer[1] <= '9') || (buffer[1] >= 'a' && buffer[1] <= 'f') || (buffer[1] >= 'A' && buffer[1] <= 'F'))){
+		if(buffer[7] == 0)
+		{
+			if(!((buffer[0] >= '0' && buffer[0] <= '9') || (buffer[0] >= 'a' && buffer[0] <= 'f') || (buffer[0] >= 'A' && buffer[0] <= 'F')) 
+			|| !((buffer[1] >= '0' && buffer[1] <= '9') || (buffer[1] >= 'a' && buffer[1] <= 'f') || (buffer[1] >= 'A' && buffer[1] <= 'F')))
+			{
 				printf("Invalid input. Each input must be a 2 digit hex value\nTry again: ");
 				continue;
 			}
@@ -236,23 +245,27 @@ void GetProgram()
 			address++;
 		}
 		//get 16-bit byte_count and 16-bit address 
-		else {
+		else 
+		{
 			byte_count = (strtol(buffer, NULL, 16) >> 16) & 0x00ffff;
 			address = strtol(buffer, NULL, 16) & 0x00ffff;				
 
 			printf("Byte Count: %i \nAddress: %i \n", byte_count, address);
 
-			if (address >= MEMORY_SIZE){
+			if(address >= MEMORY_SIZE)
+			{
 				printf("Please provide a valid address.\nTry again. ");
 			}
 
-			if ((address + byte_count - 1) > MEMORY_SIZE){
+			if ((address + byte_count - 1) > MEMORY_SIZE)
+			{
 				printf("Byte count (and starting address) exceeds available memory.\nTry again. ");
 			} 
 
 			continue;
 		}
-	} while (not_finished && no_memory_overflow);
+	} 
+	while(not_finished && no_memory_overflow);
 }
 
 void DisplayState()
@@ -299,7 +312,8 @@ int main()
 
 	
 	
-	while (!halt_enable){
+	while(!halt_enable)
+	{
 		//fetches interrupt vector or next-instruction-in-program to instruction register
 		InterruptCheckAndInstructionFetch();
 
